@@ -1,8 +1,18 @@
+# Experiment name and output dir
 experiment: hello_world
 out_dir: ~/data/out
 
+# General configuration
+batch_size: 96
 
+# Datasets
 datasets:
+  id: Mnist
   name: toy
   kwargs:
     dataset: MNIST
+
+# Models
+models:
+  name: Lenet
+  kwargs: {}
