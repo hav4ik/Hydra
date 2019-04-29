@@ -11,18 +11,19 @@ def toy(dataset,
         raise ValueError
     loader_def = getattr(torchvision.datasets, dataset)
 
-    composed_transform = None
+    transform_funcs = [torchvision.transforms.ToTensor()]
     if transforms is not None:
-        transform_funcs = []
         for transform in transforms:
             if not hasattr(torchvision.transforms, transform['def']):
                 raise ValueError
             transform_def = getattr(torchvision.transforms, transform)
             transform_funcs.append(transform_def(**transform['kwargs']))
-        composed_transform = torchvision.transforms.Compose(transform_funcs)
 
-    train_loader = loader_def(root=os.path.expanduser(root), train=True,
-                              download=True, transform=composed_transform)
-    test_loader = loader_def(root=os.path.expanduser(root), train=False,
-                             download=True, transform=composed_transform)
-    return train_loader, test_loader
+    composed_transform = torchvision.transforms.Compose(transform_funcs)
+    trainset = loader_def(
+            root=os.path.expanduser(root), train=True,
+            download=True, transform=composed_transform)
+    testset = loader_def(
+            root=os.path.expanduser(root), train=False,
+            download=True, transform=composed_transform)
+    return trainset, testset
