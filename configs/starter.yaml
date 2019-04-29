@@ -1,0 +1,8 @@
+experiment: hello_world
+out_dir: ~/data/out
+
+
+datasets:
+  name: toy
+  kwargs:
+    dataset: MNIST
