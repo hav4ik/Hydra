@@ -64,11 +64,6 @@ class ModelManager:
     def dump_history(self):
         """Dumps the history into `checkpoint_dir/history.csv` file.
         """
-        # print('HISTORY:', self.history)
-        # print('SERIES TEST:', pd.Series({'a': 1, 'b': 2, 'c': 3}))
-        # hist_dict = dict([(k, pd.Series(self.history[k]))
-                          # for k in sorted(self.history.keys())])
-        # print(hist_dict)
         df = pd.DataFrame.from_dict(self.history, orient='index')
         df.index.name = 'epoch'
         df.to_csv(os.path.join(self.checkpoint_dir, 'history.csv'))

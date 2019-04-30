@@ -1,4 +1,9 @@
 import os
+import pandas as pd
+import torch
+import torchsummary
+from tabulate import tabulate
+from termcolor import colored
 
 
 def prepare_dirs(experiment_name, out_dir, resume):
@@ -30,3 +35,51 @@ def prepare_dirs(experiment_name, out_dir, resume):
     if not os.path.isdir(num_ckpt_dir):
         os.makedirs(num_ckpt_dir)
     return num_tbrd_dir, num_ckpt_dir
+
+
+def print_experiment_info(experiment, out_dir):
+    """Pretty prints the basic information about current experiment
+    """
+    print('{} {}'.format(
+        colored('EXPERIMENT:', 'green'),
+        colored(experiment, 'magenta', attrs=['bold'])))
+    if torch.cuda.is_available():
+        gpuid = torch.cuda.current_device()
+        print('  - device: {}'.format(torch.cuda.get_device_name(gpuid)))
+    else:
+        print('  - device: CPU')
+    print('  - output: {}'.format(out_dir))
+
+
+def print_datasets_info(train_data, test_data):
+    """Pretty prints the basic information about loaded datasets
+    """
+    print(colored('\nDATASETS:', 'green'))
+    print('  - {}: {} train, {} test'.format(
+        'task 1', len(train_data), len(test_data)))
+
+
+def print_model_info(model):
+    """Pretty prints the basic information about the model
+    """
+    print(colored('\nMODEL:', 'green'))
+    torchsummary.summary(model, input_size=(1, 28, 28))
+
+
+def print_eval_info(losses, metrics):
+    """Pretty prints model evaluation results
+    """
+    if not isinstance(losses, dict) and isinstance(metrics, dict):
+        raise TypeError('Parameters `losses` and `metrics` should be '
+                        'a dict {"task_id": value}.')
+    df = pd.DataFrame({
+        'losses': pd.Series(losses), 'metrics': pd.Series(metrics)})
+    df.index.name = 'task_ids'
+    print(colored('\n  evaluations:', 'cyan'))
+    table_str = tabulate(df, headers='keys', tablefmt='fancy_grid')
+    table_str = '  ' + table_str.replace('\n', '\n  ')
+    print(table_str)
+
+
+def print_on_epoch_begin(epoch):
+    print(colored('\nEPOCH {}'.format(epoch), 'green'))
