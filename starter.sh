@@ -1,2 +1,5 @@
+#!/bin/bash
+
 python src/run.py \
-    configs/starter.yaml
+    configs/starter.yaml \
+    --resume

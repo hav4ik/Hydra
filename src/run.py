@@ -3,7 +3,7 @@ from termcolor import colored
 
 import torch
 
-from utils import config_utils
+from utils import config_utils, log_utils
 import datasets
 import models
 import torchsummary
@@ -11,7 +11,8 @@ import trainers
 
 
 def run(config,
-        n_workers=1):
+        n_workers=1,
+        resume=False):
     """Main runner that dynamically imports and executes other modules
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,23 +44,31 @@ def run(config,
             num_workers=n_workers)
     print(colored('\nDATASETS:', 'green'))
     print('  - {}: {} train, {} test'.format(
-        cfg['datasets']['id'], len(train_data), len(test_data)))
+        cfg['datasets']['task_id'], len(train_data), len(test_data)))
+
+    # Prepare checkpoints and logging dirs
+    tensorboard_logdir, checkpoints_logdir = \
+            log_utils.prepare_dirs(cfg['experiment'], cfg['out_dir'], resume)
 
     # Import Models
     print(colored('\nMODEL:', 'green'))
-    model = models.load_model(cfg['models']['name'], cfg['models']['kwargs'])
+    model_manager = models.ModelManager(checkpoints_logdir, cfg['task_ids'])
+    model = model_manager.load_model(
+            model_name=cfg['models']['name'],
+            model_weights=cfg['models']['weights'],
+            model_kwargs=cfg['models']['kwargs'])
     model = model.to(device)
     torchsummary.summary(model, input_size=(1, 28, 28))
 
     # Invoke Training
     trainer_def = trainers.load_trainer(cfg['trainer']['name'])
-    trainer_def(experiment=cfg['experiment'],
-                out_dir=cfg['out_dir'],
-                device=device,
+    trainer_def(device=device,
                 train_loader=train_loader,
                 test_loader=test_loader,
                 model=model,
                 batch_size=cfg['batch_size'],
+                tensorboard_dir=tensorboard_logdir,
+                model_manager=model_manager,
                 **cfg['trainer']['kwargs'])
 
 
@@ -67,7 +76,9 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('config')
     parser.add_argument('-t', '--workers', type=int, default=1)
+    parser.add_argument('-c', '--resume', action='store_true')
 
     args = parser.parse_args()
     run(config=args.config,
-        n_workers=args.workers)
+        n_workers=args.workers,
+        resume=args.resume)

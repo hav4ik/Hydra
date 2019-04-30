@@ -52,22 +52,21 @@ def eval_epoch(model, device, test_loader):
     print(between)
     print(row_format.format('Task #1', test_loss, accuracy))
     print(between)
+    losses = {'Mnist': test_loss}
+    return losses
 
 
-def simple(experiment,
-           out_dir,
-           device,
+def simple(device,
            train_loader,
            test_loader,
            model,
            batch_size,
+           tensorboard_dir,
+           model_manager,
            epochs=1,
            optimizers=None):
     """Simple training function, assigns an optimizer for each task.
     """
-    tensorboard_dir, checkpoint_dir = \
-        log_utils.prepare_dirs(experiment, out_dir)
-
     # Load Optimizers
     if optimizers is None:
         optimizer = optim.SGD(model.parameters())
@@ -75,6 +74,9 @@ def simple(experiment,
         optimizer = getattr(optim, optimizers['method'])(
                 model.parameters(), **optimizers['kwargs'])
 
-    for epoch in range(epochs):
+    starting_epoch = model_manager.last_epoch + 1
+    for epoch in range(starting_epoch, starting_epoch + epochs):
         train_epoch(model, device, train_loader, optimizer)
-        eval_epoch(model, device, test_loader)
+        losses = eval_epoch(model, device, test_loader)
+        model_manager.save_model(model, losses, epoch)
+

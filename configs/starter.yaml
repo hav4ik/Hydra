@@ -2,12 +2,19 @@
 experiment: hello_world
 out_dir: ~/data/out
 
+# Multi-Task Ids, to be used when specifying:
+#   - data loaders
+#   - model heads
+#   - loss functions
+task_ids:
+  - mnist
+
 # General configuration
 batch_size: 96
 
 # Datasets
 datasets:
-  id: Mnist
+  task_id: mnist
   name: toy
   kwargs:
     dataset: MNIST
@@ -15,6 +22,7 @@ datasets:
 # Models
 models:
   name: Lenet
+  weights: null
   kwargs: {}
 
 # Trainer
