@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python src/run.py \
-    configs/starter.yaml \
-    --epochs 7 \
+    "configs/$1.yaml" \
+    --epochs $2 \
     --workers 3 \
     --resume

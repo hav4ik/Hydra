@@ -1,5 +1,5 @@
 # Experiment name and output dir
-experiment: averaging
+experiment: mgda
 out_dir: ~/data/out
 
 # Multi-Task Ids, to be used when specifying:
@@ -54,7 +54,7 @@ metrics:
 
 # Trainer
 trainer:
-  name: averaging
+  name: mgda
   kwargs:
     optimizers:
       method: SGD

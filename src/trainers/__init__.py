@@ -1,6 +1,7 @@
 import sys
 from .naive import naive
 from .averaging import averaging
+from .mgda import mgda
 
 
 def load_trainer(trainer_name):
