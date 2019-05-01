@@ -35,8 +35,10 @@ def train_epoch(model,
     model.train()
     task_queue = generate_idx(task_ids, train_loaders)
     loader_iterators = dict([(k, iter(v)) for k, v in train_loaders.items()])
-    train_losses = dict([(k, 0.) for k in task_ids])
-    train_metrics = dict([(k, 0.) for k in task_ids])
+    train_losses_ts = dict(
+            [(k, torch.tensor(0.).to(device)) for k in task_ids])
+    train_metrics_ts = dict(
+            [(k, torch.tensor(0.).to(device)) for k in task_ids])
 
     pbar = tqdm(desc='  train', total=len(task_queue), ascii=True)
     for idx in task_queue:
@@ -50,13 +52,17 @@ def train_epoch(model,
         loss.backward()
         optimizers[task_id].step()
 
-        train_losses[task_id] += loss.sum().item()
-        train_metrics[task_id] += metrics[task_id](output, target).item()
+        with torch.no_grad():
+            train_losses_ts[task_id] += loss.sum()
+            train_metrics_ts[task_id] += metrics[task_id](output, target)
         pbar.update()
 
     for task_id in task_ids:
-        train_losses[task_id] /= len(train_loaders[task_id].dataset)
-        train_metrics[task_id] /= len(train_loaders[task_id].dataset)
+        train_losses_ts[task_id] /= len(train_loaders[task_id].dataset)
+        train_metrics_ts[task_id] /= len(train_loaders[task_id].dataset)
+
+    train_losses = dict([(k, v.item()) for k, v in train_losses_ts.items()])
+    train_metrics = dict([(k, v.item()) for k, v in train_metrics_ts.items()])
     pbar.close()
     return train_losses, train_metrics
 
@@ -77,16 +83,17 @@ def eval_epoch(model,
     with torch.no_grad():
         for task_id in task_ids:
             loader = test_loaders[task_id]
-            loss, metric = 0, 0
+            loss = torch.tensor(0.).to(device)
+            metric = torch.tensor(0.).to(device)
             for batch_idx, (data, target) in enumerate(loader):
                 data, target = data.to(device), target.to(device)
                 output = model(data, task_id=task_id)
-                loss += losses[task_id](output, target).sum().item()
-                metric += metrics[task_id](output, target).item()
+                loss += losses[task_id](output, target).sum()
+                metric += metrics[task_id](output, target)
                 pbar.update()
 
-            eval_losses[task_id] = loss / len(loader.dataset)
-            eval_metrics[task_id] = metric / len(loader.dataset)
+            eval_losses[task_id] = loss.item() / len(loader.dataset)
+            eval_metrics[task_id] = metric.item() / len(loader.dataset)
 
     pbar.close()
     return eval_losses, eval_metrics
@@ -139,4 +146,19 @@ def simple(device,
         log_utils.print_eval_info(
                 train_losses, train_metrics,
                 eval_losses, eval_metrics)
+
+        for task_id in task_ids:
+            tensorboard_writer.add_scalar(
+                    '{}/train/loss'.format(task_id),
+                    train_losses[task_id], epoch)
+            tensorboard_writer.add_scalar(
+                    '{}/train/metric'.format(task_id),
+                    train_metrics[task_id], epoch)
+            tensorboard_writer.add_scalar(
+                    '{}/val/loss'.format(task_id),
+                    eval_losses[task_id], epoch)
+            tensorboard_writer.add_scalar(
+                    '{}/val/metric'.format(task_id),
+                    eval_metrics[task_id], epoch)
+
         model_manager.save_model(model, eval_losses, epoch)

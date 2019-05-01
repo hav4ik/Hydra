@@ -57,6 +57,7 @@ def import_losses_and_metrics(config):
 
 
 def run(config,
+        epochs,
         n_workers=1,
         resume=False):
     """Main runner that dynamically imports and executes other modules
@@ -84,6 +85,7 @@ def run(config,
                 batch_size=cfg['batch_size'],
                 tensorboard_writer=tensorboard_writer,
                 model_manager=model_manager,
+                epochs=epochs,
                 **cfg['trainer']['kwargs'])
 
     tensorboard_writer.close()
@@ -92,10 +94,12 @@ def run(config,
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('config')
+    parser.add_argument('-n', '--epochs', type=int, default=1)
     parser.add_argument('-t', '--workers', type=int, default=1)
     parser.add_argument('-c', '--resume', action='store_true')
 
     args = parser.parse_args()
     run(config=args.config,
+        epochs=args.epochs,
         n_workers=args.workers,
         resume=args.resume)
