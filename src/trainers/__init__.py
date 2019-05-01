@@ -1,5 +1,6 @@
 import sys
-from .simple import simple
+from .naive import naive
+from .averaging import averaging
 
 
 def load_trainer(trainer_name):

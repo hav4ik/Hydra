@@ -1,5 +1,5 @@
 # Experiment name and output dir
-experiment: starter-2-tasks
+experiment: averaging
 out_dir: ~/data/out
 
 # Multi-Task Ids, to be used when specifying:
@@ -54,7 +54,7 @@ metrics:
 
 # Trainer
 trainer:
-  name: simple
+  name: naive
   kwargs:
     optimizers:
       method: SGD

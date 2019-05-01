@@ -99,18 +99,18 @@ def eval_epoch(model,
     return eval_losses, eval_metrics
 
 
-def simple(device,
-           task_ids,
-           train_loaders,
-           test_loaders,
-           model,
-           losses,
-           metrics,
-           batch_size,
-           tensorboard_writer,
-           model_manager,
-           epochs=1,
-           optimizers=None):
+def naive(device,
+          task_ids,
+          train_loaders,
+          test_loaders,
+          model,
+          losses,
+          metrics,
+          batch_size,
+          tensorboard_writer,
+          model_manager,
+          epochs=1,
+          optimizers=None):
     """Simple training function, assigns an optimizer for each task.
     """
     # Load Optimizers
