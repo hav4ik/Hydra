@@ -34,15 +34,16 @@ class ModelManager:
             raise ValueError
         model_def = getattr(sys.modules[__name__], model_name)
         model = model_def(**model_kwargs)
+        last_model = None
         if model_weights is not None:
-            model.load_state_dict(
-                    torch.load(os.path.expanduser(model_weights)))
+            last_model = os.path.expanduser(model_weights)
+            model.load_state_dict(torch.load(last_model))
         elif len(self.history) > 0:
             last_model = os.path.expanduser(os.path.join(
                     self.checkpoint_dir,
                     self.history[self.last_epoch]['checkpoint']))
             model.load_state_dict(torch.load(last_model))
-        return model
+        return model, last_model
 
     def save_model(self, model, losses, epoch=None):
         """Saves the model checkpoint, and dumps the losses to `history.csv`

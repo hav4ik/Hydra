@@ -39,12 +39,12 @@ def run(config,
 
     # Import Models
     model_manager = models.ModelManager(checkpoints_logdir, cfg['task_ids'])
-    model = model_manager.load_model(
+    model, last_ckpt = model_manager.load_model(
             model_name=cfg['models']['name'],
             model_weights=cfg['models']['weights'],
             model_kwargs=cfg['models']['kwargs'])
     model = model.to(device)
-    log_utils.print_model_info(model)
+    log_utils.print_model_info(model, last_ckpt)
 
     # Import loss functions and metrics
     loss_dict = dict([(loss['task_id'], loss['name'])

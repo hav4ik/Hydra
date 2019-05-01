@@ -61,10 +61,13 @@ def print_datasets_info(train_loaders, test_loaders):
             task_id, ntrain, ntest))
 
 
-def print_model_info(model):
+def print_model_info(model, last_checkpoint):
     """Pretty prints the basic information about the model
     """
     print(colored('\nMODEL:', 'green'))
+    if last_checkpoint is not None:
+        print(colored('  [checkpoint]:', 'cyan'), last_checkpoint)
+    print(colored('  [module]:', 'cyan'))
     print('  ' + str(model).replace('\n', '\n  '))
 
 
@@ -77,7 +80,7 @@ def print_eval_info(losses, metrics):
     df = pd.DataFrame({
         'losses': pd.Series(losses), 'metrics': pd.Series(metrics)})
     df.index.name = 'task_ids'
-    print(colored('\n  evaluations:', 'cyan'))
+    print(colored('\n  [evaluations]:', 'cyan'))
     table_str = tabulate(df, headers='keys', tablefmt='simple')
     table_str = '  ' + table_str.replace('\n', '\n  ')
     print(table_str)
