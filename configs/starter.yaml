@@ -1,29 +1,56 @@
 # Experiment name and output dir
-experiment: hello_world
+experiment: starter-2-tasks
 out_dir: ~/data/out
 
 # Multi-Task Ids, to be used when specifying:
-#   - data loaders
-#   - model heads
-#   - loss functions
 task_ids:
   - mnist
+  - fashion
 
 # General configuration
 batch_size: 96
 
 # Datasets
 datasets:
-  task_id: mnist
-  name: toy
-  kwargs:
-    dataset: MNIST
+  - task_id: mnist
+    name: toy
+    kwargs:
+      dataset: MNIST
+
+  - task_id: fashion
+    name: toy
+    kwargs:
+      dataset: FashionMNIST
 
 # Models
 models:
   name: Lenet
   weights: null
-  kwargs: {}
+  kwargs:
+    heads:
+      - task_id: mnist
+        kwargs:
+          n_classes: 10
+
+      - task_id: fashion
+        kwargs:
+          n_classes: 10
+
+# Loss functions
+losses:
+  - task_id: mnist
+    name: cross_entropy
+
+  - task_id: fashion
+    name: cross_entropy
+
+# Evaluation metrics
+metrics:
+  - task_id: mnist
+    name: corrects
+
+  - task_id: fashion
+    name: corrects
 
 # Trainer
 trainer:

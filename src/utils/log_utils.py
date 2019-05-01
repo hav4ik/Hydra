@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import torch
-import torchsummary
 from tabulate import tabulate
 from termcolor import colored
 
@@ -51,19 +50,22 @@ def print_experiment_info(experiment, out_dir):
     print('  - output: {}'.format(out_dir))
 
 
-def print_datasets_info(train_data, test_data):
+def print_datasets_info(train_loaders, test_loaders):
     """Pretty prints the basic information about loaded datasets
     """
     print(colored('\nDATASETS:', 'green'))
-    print('  - {}: {} train, {} test'.format(
-        'task 1', len(train_data), len(test_data)))
+    for task_id in train_loaders.keys():
+        ntrain = len(train_loaders[task_id].dataset)
+        ntest = len(test_loaders[task_id].dataset)
+        print('  - {}: {} train, {} test'.format(
+            task_id, ntrain, ntest))
 
 
 def print_model_info(model):
     """Pretty prints the basic information about the model
     """
     print(colored('\nMODEL:', 'green'))
-    torchsummary.summary(model, input_size=(1, 28, 28))
+    print('  ' + str(model).replace('\n', '\n  '))
 
 
 def print_eval_info(losses, metrics):
@@ -76,7 +78,7 @@ def print_eval_info(losses, metrics):
         'losses': pd.Series(losses), 'metrics': pd.Series(metrics)})
     df.index.name = 'task_ids'
     print(colored('\n  evaluations:', 'cyan'))
-    table_str = tabulate(df, headers='keys', tablefmt='fancy_grid')
+    table_str = tabulate(df, headers='keys', tablefmt='simple')
     table_str = '  ' + table_str.replace('\n', '\n  ')
     print(table_str)
 
