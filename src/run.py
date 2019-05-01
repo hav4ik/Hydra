@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import torch
+from tensorboardX import SummaryWriter
 
 from utils import config_utils, log_utils, custom_metrics, custom_losses
 import datasets
@@ -63,14 +64,15 @@ def run(config,
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cfg = config_utils.read_config(config)
     log_utils.print_experiment_info(cfg['experiment'], cfg['out_dir'])
+
     tensorboard_logdir, checkpoints_logdir = \
         log_utils.prepare_dirs(cfg['experiment'], cfg['out_dir'], resume)
 
     train_loaders, test_loaders = import_data_loaders(cfg, n_workers)
     model, model_manager = import_models(cfg, checkpoints_logdir, device)
     losses, metrics = import_losses_and_metrics(cfg)
+    tensorboard_writer = SummaryWriter(tensorboard_logdir)
 
-    # Invoke Training
     trainer_def = trainers.load_trainer(cfg['trainer']['name'])
     trainer_def(device=device,
                 task_ids=cfg['task_ids'],
@@ -80,9 +82,11 @@ def run(config,
                 losses=losses,
                 metrics=metrics,
                 batch_size=cfg['batch_size'],
-                tensorboard_dir=tensorboard_logdir,
+                tensorboard_writer=tensorboard_writer,
                 model_manager=model_manager,
                 **cfg['trainer']['kwargs'])
+
+    tensorboard_writer.close()
 
 
 if __name__ == '__main__':

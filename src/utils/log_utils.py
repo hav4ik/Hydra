@@ -71,14 +71,21 @@ def print_model_info(model, last_checkpoint):
     print('  ' + str(model).replace('\n', '\n  '))
 
 
-def print_eval_info(losses, metrics):
+def print_eval_info(train_losses, train_metrics, eval_losses, eval_metrics):
     """Pretty prints model evaluation results
     """
-    if not isinstance(losses, dict) and isinstance(metrics, dict):
+    if not isinstance(train_losses, dict) \
+            and isinstance(train_metrics, dict) \
+            and isinstance(eval_losses, dict) \
+            and isinstance(eval_metrics, dict):
         raise TypeError('Parameters `losses` and `metrics` should be '
                         'a dict {"task_id": value}.')
     df = pd.DataFrame({
-        'losses': pd.Series(losses), 'metrics': pd.Series(metrics)})
+        'train losses': pd.Series(train_losses),
+        'train metrics': pd.Series(train_metrics),
+        'eval losses': pd.Series(eval_losses),
+        'eval metrics': pd.Series(eval_metrics)
+    })
     df.index.name = 'task_ids'
     print(colored('\n  [evaluations]:', 'cyan'))
     table_str = tabulate(df, headers='keys', tablefmt='simple')
