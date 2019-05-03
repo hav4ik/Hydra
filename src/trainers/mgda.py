@@ -2,7 +2,7 @@ from tqdm import tqdm
 import torch
 import torch.optim as optim
 
-import utils
+from utils.grad_normalizers import normalize_grads
 from utils import log_utils
 from utils.min_norm_solver import MinNormSolver
 
@@ -14,7 +14,8 @@ def train_epoch(model,
                 losses,
                 metrics,
                 optimizers,
-                solver):
+                solver,
+                normalize='loss+'):
     """Trains the model on all data loaders for an epoch.
     """
     model.train()
@@ -24,10 +25,12 @@ def train_epoch(model,
     train_metrics_ts = dict(
             [(k, torch.tensor(0.).to(device)) for k in task_ids])
     total_batches = min([len(loader) for _, loader in train_loaders.items()])
-    num_tasks = torch.tensor(len(task_ids)).to(device)
+    pareto_count = 0
 
     pbar = tqdm(desc='  train', total=total_batches, ascii=True)
     temp_body_grad = None
+    if normalize is not None:
+        loss_log = torch.empty(len(task_ids), device=device)
     for batch_idx in range(total_batches):
         # for each task, calculate head grads and accumulate body grads
         for task_idx, task_id in enumerate(task_ids):
@@ -42,6 +45,8 @@ def train_epoch(model,
             output = model(data, task_id=task_id)
             loss = losses[task_id](output, target)
             loss.backward()
+            if normalize is not None:
+                loss_log[task_idx] = loss
 
             # optimize the heads right away
             optimizers['head'][task_id].step()
@@ -64,11 +69,16 @@ def train_epoch(model,
         # Averaging out body gradients and optimize the body
         with torch.no_grad():
             for i, p in enumerate(model.body.parameters()):
+                if normalize is not None:
+                    temp_body_grad[i] = normalize_grads(
+                            temp_body_grad[i], loss_log, normalize)
                 sol = solver(temp_body_grad[i])
                 grad_star = torch.matmul(sol.unsqueeze_(0), temp_body_grad[i])
+                if torch.max(torch.abs(grad_star)) < 1e-5:
+                    pareto_count += 1
                 p.grad.copy_(grad_star.view(p.grad.shape))
-        optimizers['body'].step()
 
+        optimizers['body'].step()
         pbar.update()
 
     for task_id in task_ids:
@@ -78,7 +88,7 @@ def train_epoch(model,
     train_losses = dict([(k, v.item()) for k, v in train_losses_ts.items()])
     train_metrics = dict([(k, v.item()) for k, v in train_metrics_ts.items()])
     pbar.close()
-    return train_losses, train_metrics
+    return train_losses, train_metrics, pareto_count
 
 
 def eval_epoch(model,
@@ -124,7 +134,8 @@ def mgda(device,
          tensorboard_writer,
          model_manager,
          epochs=1,
-         optimizers=None):
+         optimizers=None,
+         normalize='loss+'):
     """Simple training function, assigns an optimizer for each task.
     """
     # Load Optimizers
@@ -145,7 +156,7 @@ def mgda(device,
     for epoch in range(starting_epoch, starting_epoch + epochs):
         log_utils.print_on_epoch_begin(epoch)
 
-        train_losses, train_metrics = train_epoch(
+        train_losses, train_metrics, pareto_count = train_epoch(
                 model=model,
                 task_ids=task_ids,
                 device=device,
@@ -153,7 +164,8 @@ def mgda(device,
                 losses=losses,
                 metrics=metrics,
                 optimizers=optimizers_dict,
-                solver=solver)
+                solver=solver,
+                normalize=normalize)
 
         eval_losses, eval_metrics = eval_epoch(
                 model=model,
@@ -162,6 +174,9 @@ def mgda(device,
                 test_loaders=test_loaders,
                 losses=losses,
                 metrics=metrics)
+
+        log_utils.print_arbitrary_info(
+                'pareto stationary', pareto_count)
 
         log_utils.print_eval_info(
                 train_losses, train_metrics,

@@ -95,3 +95,7 @@ def print_eval_info(train_losses, train_metrics, eval_losses, eval_metrics):
 
 def print_on_epoch_begin(epoch):
     print(colored('\nEPOCH {}'.format(epoch), 'green'))
+
+
+def print_arbitrary_info(name, s):
+    print(colored('\n  [{}]:'.format(name), 'cyan'), str(s))
