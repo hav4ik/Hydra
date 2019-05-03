@@ -184,7 +184,7 @@ class MinNormSolver(nn.Module):
             v1v2 = torch.dot(vecs[0], vecs[1])
             v2v2 = torch.dot(vecs[1], vecs[1])
             gamma, cost = self.linear_solver(v1v1, v1v2, v2v2)
-            return torch.tensor([gamma, 1. - gamma])
+            return torch.tensor([gamma, 1. - gamma], device=vecs.device)
 
         grammian = torch.mm(vecs, vecs.t())
         sol_vec = self.planar_solver(grammian)

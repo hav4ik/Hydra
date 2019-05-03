@@ -2,7 +2,9 @@ from tqdm import tqdm
 import torch
 import torch.optim as optim
 
+import utils
 from utils import log_utils
+from utils.min_norm_solver import MinNormSolver
 
 
 def train_epoch(model,
@@ -11,7 +13,8 @@ def train_epoch(model,
                 train_loaders,
                 losses,
                 metrics,
-                optimizers):
+                optimizers,
+                solver):
     """Trains the model on all data loaders for an epoch.
     """
     model.train()
@@ -66,12 +69,18 @@ def train_epoch(model,
                 train_losses_ts[task_id] += loss.sum()
                 train_metrics_ts[task_id] += metrics[task_id](output, target)
 
-        # averaging out body gradients and optimize the body
-        for p in model.body.parameters():
-            p.grad.zero_()
-        for task_id in task_ids:
-            for g, p in zip(temp_body_grad[task_id], model.body.parameters()):
-                p.grad += g / num_tasks
+        # Averaging out body gradients and optimize the body
+        # here the choice of dynamic allocation was made intentionally:
+        # we trade a bit of speed for larger batch sizes.
+        # An alternative solution would be to define a nn.Module that stores
+        # a tensor (n_tasks x vec_len) for each of the network's parameter.
+        n_params = len(list(model.body.parameters()))
+        for i, p in zip(range(n_params), model.body.parameters()):
+            vecs = [temp_body_grad[task_id][i].view(-1) for task_id in task_ids]
+            vecs = torch.stack(vecs)
+            sol = solver(vecs)
+            grad_star = torch.matmul(sol.unsqueeze_(0), vecs)
+            p.grad.copy_(grad_star.view(p.grad.shape))
         optimizers['body'].step()
 
         pbar.update()
@@ -144,6 +153,8 @@ def mgda(device,
     optimizers_dict = {
             'body': body_optimizers, 'head': head_optimizers}
 
+    solver = MinNormSolver(len(task_ids)).to(device)
+
     starting_epoch = model_manager.last_epoch + 1
     for epoch in range(starting_epoch, starting_epoch + epochs):
         log_utils.print_on_epoch_begin(epoch)
@@ -155,7 +166,8 @@ def mgda(device,
                 train_loaders=train_loaders,
                 losses=losses,
                 metrics=metrics,
-                optimizers=optimizers_dict)
+                optimizers=optimizers_dict,
+                solver=solver)
 
         eval_losses, eval_metrics = eval_epoch(
                 model=model,
