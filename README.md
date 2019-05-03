@@ -1,6 +1,10 @@
 # Effective Multi-Task Learning
 
-A flexible and convenient framework for Multi-Task Learning.
+A flexible and convenient framework for Multi-Task Learning. The following algorithms are implemented:
+
+* Naive
+* Gradients averaging
+* MGDA
 
 # Installation
 
