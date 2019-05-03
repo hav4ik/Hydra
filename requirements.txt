@@ -1,7 +1,5 @@
-numpy
-pandas
 tensorboardX
 termcolor
 tqdm
-pytorch
-torchvision
+pyyaml
+tabulate
