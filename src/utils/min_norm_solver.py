@@ -1,10 +1,25 @@
+"""
+Collection of methods to solve the min-norm convex minimization problem:
+
+  given:      V = [V1, V2, ... Vn]    # (Vi are k-dimensional vectors)
+  minimize:   || Σ ci*Vi ||^2         # Find min-norm point...
+  w.r.t:      c = [c1, c2, ... cn]    # (ci are scalars)
+  subj. to:   Σ ci = 1                # ... on the convex hull of V.
+
+The following methods are implemented (using PyTorch):
+  * MinNormLinearSolver - analytical solver in case of 2 vectors
+  * MinNormPlanarSolver - analytical solver in case V lies on a plane
+  * MinNormSolver       - iterative general solver (simplex projection)
+  * MinNormSolverFW     - iterative general solver (Frank-Wolfe)
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn
 
 
 class MinNormLinearSolver(nn.Module):
-    """Solves the min norm problem in case of 2 vectors (lies on a line)
+    """Solves the min norm problem in case of 2 vectors (lies on a line):
     """
     def __init__(self):
         super().__init__()
@@ -13,6 +28,17 @@ class MinNormLinearSolver(nn.Module):
 
     @torch.no_grad()
     def forward(self, v1v1, v1v2, v2v2):
+        """Solver execution on scalar products of 2 vectors
+
+        Args:
+          v1v1:  scalar product <V1, V1>
+          v1v2:  scalar product <V1, V2>
+          v2v2:  scalar product <V2, V2>
+
+        Returns:
+          gamma: min-norm solution c = (gamma, 1. - gamma)
+          cost:  the norm of min-norm point
+        """
         if v1v2 >= v1v1:
             return self.one, v1v1
         if v1v2 >= v2v2:
@@ -43,6 +69,17 @@ class MinNormPlanarSolver(nn.Module):
 
     @torch.no_grad()
     def line_solver_vectorized(self, v1v1, v1v2, v2v2):
+        """Linear case solver, but for collection of vector pairs (Vi, Vj)
+
+        Args:
+          v1v1:  vector of scalar product <Vi, Vi>
+          v1v2:  vector of scalar product <Vi, Vj>
+          v2v2:  vector of scalar product <Vj, Vj>
+
+        Returns:
+          gamma: vector of min-norm solution c = (gamma, 1. - gamma)
+          cost:  vector of the norm of min-norm point
+        """
         gamma = (v2v2 - v1v2) / (v1v1 + v2v2 - 2 * v1v2 + 1e-8)
         gamma = gamma.where(v1v2 < v2v2, self.zero)
         gamma = gamma.where(v1v2 < v1v1, self.one)
@@ -53,10 +90,15 @@ class MinNormPlanarSolver(nn.Module):
         return gamma, cost
 
     @torch.no_grad()
-    def forward(self, grammian, from_grammian=True):
-        if not from_grammian:
-            grammian = torch.mm(grammian, grammian.t())
+    def forward(self, grammian):
+        """Planar case solver, when Vi lies on the same plane
 
+        Args:
+          grammian: grammian matrix G[i, j] = [<Vi, Vj>], G is a nxn tensor
+
+        Returns:
+          sol: coefficients c = [c1, ... cn] that solves the min-norm problem
+        """
         vivj = grammian[self.ii_triu, self.jj_triu]
         vivi = grammian[self.ii_triu, self.ii_triu]
         vjvj = grammian[self.jj_triu, self.jj_triu]
@@ -70,6 +112,8 @@ class MinNormPlanarSolver(nn.Module):
 
 
 class MinNormSolver(nn.Module):
+    """Solves the min norm problem in the general case.
+    """
     def __init__(self, n_tasks, max_iter=250, stop_crit=1e-6):
         super().__init__()
         self.n = n_tasks
@@ -125,6 +169,14 @@ class MinNormSolver(nn.Module):
 
     @torch.no_grad()
     def forward(self, vecs):
+        """General case solver using simplex projection algorithm.
+
+        Args:
+          vecs:  2D tensor V, where each row is a vector Vi
+
+        Returns:
+          sol: coefficients c = [c1, ... cn] that solves the min-norm problem
+        """
         if self.n == 1:
             return vecs[0]
         if self.n == 2:
