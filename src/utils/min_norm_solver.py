@@ -3,6 +3,25 @@ import torch
 import torch.nn as nn
 
 
+class MinNormLinearSolver(nn.Module):
+    """Solves the min norm problem in case of 2 vectors (lies on a line)
+    """
+    def __init__(self):
+        super().__init__()
+        self.one = torch.tensor(1.)
+        self.zero = torch.tensor(0.)
+
+    @torch.no_grad()
+    def forward(self, v1v1, v1v2, v2v2):
+        if v1v2 >= v1v1:
+            return self.one, v1v1
+        if v1v2 >= v2v2:
+            return self.zero, v2v2
+        gamma = (v2v2 - v1v2) / (v1v1 + v2v2 - 2 * v1v2 + 1e-8)
+        cost = v2v2 + gamma * (v1v2 - v2v2)
+        return gamma, cost
+
+
 class MinNormPlanarSolver(nn.Module):
     """Solves the min norm problem in case the vectors lies on same plane
     """
