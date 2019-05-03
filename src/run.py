@@ -2,7 +2,10 @@ from argparse import ArgumentParser
 import torch
 from tensorboardX import SummaryWriter
 
-from utils import config_utils, log_utils, custom_metrics, custom_losses
+from utils import config_utils, log_utils
+from utils import losses as custom_losses
+from utils import metrics as custom_metrics
+import utils
 import datasets
 import models
 import trainers
