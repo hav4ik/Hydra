@@ -27,18 +27,10 @@ def train_epoch(model,
     num_tasks = torch.tensor(len(task_ids)).to(device)
 
     pbar = tqdm(desc='  train', total=total_batches, ascii=True)
-    temp_body_grad = dict()
+    temp_body_grad = None
     for batch_idx in range(total_batches):
-
-        # if the tensors for body gradients were created previously
-        for task_id in task_ids:
-            if task_id not in temp_body_grad:
-                continue
-            for g in temp_body_grad[task_id]:
-                g.zero_()
-
         # for each task, calculate head grads and accumulate body grads
-        for task_id in task_ids:
+        for task_idx, task_id in enumerate(task_ids):
             data, target = loader_iterators[task_id].next()
             data, target = data.to(device), target.to(device)
 
@@ -55,14 +47,14 @@ def train_epoch(model,
             optimizers['head'][task_id].step()
 
             # save the body grads to temp_body_grad
-            if task_id not in temp_body_grad:
-                temp_body_grad[task_id] = [
-                        p.grad.clone().detach()
-                        for p in model.body.parameters()]
-            else:
-                for g, p in zip(
-                        temp_body_grad[task_id], model.body.parameters()):
-                    g.copy_(p.grad)
+            with torch.no_grad():
+                if temp_body_grad is None:
+                    temp_body_grad = []
+                    for p in model.body.parameters():
+                        temp_body_grad.append(torch.empty(
+                            len(task_ids), p.grad.numel(), device=device))
+                for i, p in enumerate(model.body.parameters()):
+                    temp_body_grad[i][task_idx] = p.grad.view(p.grad.numel())
 
             # calculate training metrics
             with torch.no_grad():
@@ -70,17 +62,11 @@ def train_epoch(model,
                 train_metrics_ts[task_id] += metrics[task_id](output, target)
 
         # Averaging out body gradients and optimize the body
-        # here the choice of dynamic allocation was made intentionally:
-        # we trade a bit of speed for larger batch sizes.
-        # An alternative solution would be to define a nn.Module that stores
-        # a tensor (n_tasks x vec_len) for each of the network's parameter.
-        n_params = len(list(model.body.parameters()))
-        for i, p in zip(range(n_params), model.body.parameters()):
-            vecs = [temp_body_grad[task_id][i].view(-1) for task_id in task_ids]
-            vecs = torch.stack(vecs)
-            sol = solver(vecs)
-            grad_star = torch.matmul(sol.unsqueeze_(0), vecs)
-            p.grad.copy_(grad_star.view(p.grad.shape))
+        with torch.no_grad():
+            for i, p in enumerate(model.body.parameters()):
+                sol = solver(temp_body_grad[i])
+                grad_star = torch.matmul(sol.unsqueeze_(0), temp_body_grad[i])
+                p.grad.copy_(grad_star.view(p.grad.shape))
         optimizers['body'].step()
 
         pbar.update()

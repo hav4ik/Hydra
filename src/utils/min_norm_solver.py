@@ -23,8 +23,6 @@ class MinNormLinearSolver(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        self.one = torch.tensor(1.)
-        self.zero = torch.tensor(0.)
 
     @torch.no_grad()
     def forward(self, v1v1, v1v2, v2v2):
@@ -40,9 +38,9 @@ class MinNormLinearSolver(nn.Module):
           cost:  the norm of min-norm point
         """
         if v1v2 >= v1v1:
-            return self.one, v1v1
+            return 1., v1v1
         if v1v2 >= v2v2:
-            return self.zero, v2v2
+            return 0., v2v2
         gamma = (v2v2 - v1v2) / (v1v1 + v2v2 - 2 * v1v2 + 1e-8)
         cost = v2v2 + gamma * (v1v2 - v2v2)
         return gamma, cost
@@ -53,19 +51,18 @@ class MinNormPlanarSolver(nn.Module):
     """
     def __init__(self, n_tasks):
         super().__init__()
-        self.n = torch.tensor(n_tasks)
-
         i_grid = torch.arange(n_tasks)
         j_grid = torch.arange(n_tasks)
         ii_grid, jj_grid = torch.meshgrid(i_grid, j_grid)
-        i_triu, j_triu = np.triu_indices(self.n, 1)
-        self.i_triu = torch.from_numpy(i_triu)
-        self.j_triu = torch.from_numpy(j_triu)
-        self.ii_triu = ii_grid[i_triu, j_triu]
-        self.jj_triu = jj_grid[i_triu, j_triu]
+        i_triu, j_triu = np.triu_indices(n_tasks, 1)
 
-        self.one = torch.ones(self.ii_triu.shape)
-        self.zero = torch.zeros(self.ii_triu.shape)
+        self.register_buffer('n', torch.tensor(n_tasks))
+        self.register_buffer('i_triu', torch.from_numpy(i_triu))
+        self.register_buffer('j_triu', torch.from_numpy(j_triu))
+        self.register_buffer('ii_triu', ii_grid[i_triu, j_triu])
+        self.register_buffer('jj_triu', jj_grid[i_triu, j_triu])
+        self.register_buffer('one', torch.ones(self.ii_triu.shape))
+        self.register_buffer('zero', torch.zeros(self.ii_triu.shape))
 
     @torch.no_grad()
     def line_solver_vectorized(self, v1v1, v1v2, v2v2):
@@ -117,21 +114,23 @@ class MinNormSolver(nn.Module):
     def __init__(self, n_tasks, max_iter=250, stop_crit=1e-6):
         super().__init__()
         self.n = n_tasks
-        self.n_ts = torch.tensor(n_tasks)
-
         self.linear_solver = MinNormLinearSolver()
         self.planar_solver = MinNormPlanarSolver(n_tasks)
-        self.i_grid = torch.arange(n_tasks, dtype=torch.float32) + 1
 
-        i_grid = torch.arange(n_tasks)
-        j_grid = torch.arange(n_tasks)
-        self.ii_grid, self.jj_grid = torch.meshgrid(i_grid, j_grid)
+        n_grid = torch.arange(n_tasks)
+        i_grid = torch.arange(n_tasks, dtype=torch.float32) + 1
+        ii_grid, jj_grid = torch.meshgrid(n_grid, n_grid)
 
-        self.one = torch.tensor(1.)
-        self.zero = torch.zeros(n_tasks)
+        self.register_buffer('n_ts', torch.tensor(n_tasks))
+        self.register_buffer('i_grid', i_grid)
+        self.register_buffer('ii_grid', ii_grid)
+        self.register_buffer('jj_grid', jj_grid)
+        self.register_buffer('zero', torch.zeros(n_tasks))
+        self.register_buffer('stop_crit', torch.tensor(stop_crit))
 
         self.max_iter = max_iter
-        self.stop_crit = stop_crit
+        self.two_sol = nn.Parameter(torch.zeros(2))
+        self.two_sol.require_grad = False
 
     @torch.no_grad()
     def projection_to_simplex(self, gamma):
@@ -183,8 +182,9 @@ class MinNormSolver(nn.Module):
             v1v1 = torch.dot(vecs[0], vecs[0])
             v1v2 = torch.dot(vecs[0], vecs[1])
             v2v2 = torch.dot(vecs[1], vecs[1])
-            gamma, cost = self.linear_solver(v1v1, v1v2, v2v2)
-            return torch.tensor([gamma, 1. - gamma], device=vecs.device)
+            self.two_sol[0], cost = self.linear_solver(v1v1, v1v2, v2v2)
+            self.two_sol[1] = 1. - self.two_sol[0]
+            return self.two_sol.clone()
 
         grammian = torch.mm(vecs, vecs.t())
         sol_vec = self.planar_solver(grammian)
