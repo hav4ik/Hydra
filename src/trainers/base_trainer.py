@@ -1,6 +1,8 @@
 from tqdm import tqdm
 import torch
 
+from utils import log_utils
+
 
 class BaseTrainer:
     def __init__(self,
@@ -14,6 +16,7 @@ class BaseTrainer:
                  test_loaders,
                  tensorboard_writer,
                  **kwargs):
+
         self.device = device
         self.model = model
         self.model_manager = model_manager
@@ -49,3 +52,29 @@ class BaseTrainer:
 
     def train_epoch(self):
         raise NotImplementedError
+
+    def run_epoch(self, epoch):
+        log_utils.print_on_epoch_begin(epoch)
+
+        train_losses, train_metrics = self.train_epoch()
+        eval_losses, eval_metrics = self.eval_epoch()
+
+        log_utils.print_eval_info(
+                train_losses, train_metrics,
+                eval_losses, eval_metrics)
+
+        for task_id in self.task_ids:
+            self.tensorboard_writer.add_scalar(
+                    '{}/train/loss'.format(task_id),
+                    train_losses[task_id], epoch)
+            self.tensorboard_writer.add_scalar(
+                    '{}/train/metric'.format(task_id),
+                    train_metrics[task_id], epoch)
+            self.tensorboard_writer.add_scalar(
+                    '{}/val/loss'.format(task_id),
+                    eval_losses[task_id], epoch)
+            self.tensorboard_writer.add_scalar(
+                    '{}/val/metric'.format(task_id),
+                    eval_metrics[task_id], epoch)
+
+        return eval_losses, eval_metrics
