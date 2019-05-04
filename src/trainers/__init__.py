@@ -2,6 +2,7 @@ import sys
 from .naive import Naive
 from .averaging import Averaging
 from .mgda import MGDA
+from .gradnorm import GradNorm
 
 
 def load_trainer(trainer_name):
