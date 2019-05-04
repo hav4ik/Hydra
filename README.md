@@ -1,10 +1,10 @@
-# Hydra &mdash; Multi-Task Learning Framework for PyTorch
+# Hydra &mdash; a Multi-Task Learning Framework
 
-A flexible and convenient framework for Multi-Task Learning. The following algorithms are implemented:
+[Hydra][hydra] is a flexible multi-task learning framework written on [PyTorch 1.0][pytorch]. The following multi-task learning algorithms are implemented:
 
-* Naive
-* Gradients averaging
-* MGDA
+* Naive (a separate optimizer for each task)
+* Gradients averaging (average gradients to the body)
+* MGDA (described in [Multi-Task Learning as Multi-Objective Optimization, NIPS 2018][mgda])
 
 # Installation
 
@@ -22,4 +22,7 @@ A flexible and convenient framework for Multi-Task Learning. The following algor
       pip install -r requirements.txt
 
 
+[hydra]: https://github.com/hav4ik/Hydra
 [conda]: https://docs.conda.io/en/latest/miniconda.html
+[pytorch]: https://pytorch.org/
+[mgda]: https://papers.nips.cc/paper/7334-multi-task-learning-as-multi-objective-optimization.pdf
