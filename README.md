@@ -1,4 +1,4 @@
-# Hydra &mdash; Effective Multi-Task Learning Framework for PyTorch
+# Hydra &mdash; Multi-Task Learning Framework for PyTorch
 
 A flexible and convenient framework for Multi-Task Learning. The following algorithms are implemented:
 
