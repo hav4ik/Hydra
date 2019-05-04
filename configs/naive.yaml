@@ -54,7 +54,7 @@ metrics:
 
 # Trainer
 trainer:
-  name: naive
+  name: Naive
   kwargs:
     optimizers:
       method: SGD

@@ -77,19 +77,41 @@ def run(config,
     tensorboard_writer = SummaryWriter(tensorboard_logdir)
 
     trainer_def = trainers.load_trainer(cfg['trainer']['name'])
-    trainer_def(device=device,
-                task_ids=cfg['task_ids'],
-                train_loaders=train_loaders,
-                test_loaders=test_loaders,
-                model=model,
-                losses=losses,
-                metrics=metrics,
-                batch_size=cfg['batch_size'],
-                tensorboard_writer=tensorboard_writer,
-                model_manager=model_manager,
-                epochs=epochs,
-                **cfg['trainer']['kwargs'])
+    trainer = trainer_def(device=device,
+                          model=model,
+                          model_manager=model_manager,
+                          task_ids=cfg['task_ids'],
+                          losses=losses,
+                          metrics=metrics,
+                          train_loaders=train_loaders,
+                          test_loaders=test_loaders,
+                          tensorboard_writer=tensorboard_writer,
+                          **cfg['trainer']['kwargs'])
 
+    starting_epoch = model_manager.last_epoch + 1
+    for epoch in range(starting_epoch, starting_epoch + epochs):
+        log_utils.print_on_epoch_begin(epoch)
+
+        train_losses, train_metrics = trainer.train_epoch()
+        eval_losses, eval_metrics = trainer.eval_epoch()
+
+        log_utils.print_eval_info(
+                train_losses, train_metrics,
+                eval_losses, eval_metrics)
+        for task_id in cfg['task_ids']:
+            tensorboard_writer.add_scalar(
+                    '{}/train/loss'.format(task_id),
+                    train_losses[task_id], epoch)
+            tensorboard_writer.add_scalar(
+                    '{}/train/metric'.format(task_id),
+                    train_metrics[task_id], epoch)
+            tensorboard_writer.add_scalar(
+                    '{}/val/loss'.format(task_id),
+                    eval_losses[task_id], epoch)
+            tensorboard_writer.add_scalar(
+                    '{}/val/metric'.format(task_id),
+                    eval_metrics[task_id], epoch)
+        model_manager.save_model(model, eval_losses, epoch)
     tensorboard_writer.close()
 
 

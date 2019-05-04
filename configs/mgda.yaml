@@ -54,7 +54,7 @@ metrics:
 
 # Trainer
 trainer:
-  name: mgda
+  name: MGDA
   kwargs:
     optimizers:
       method: Adam

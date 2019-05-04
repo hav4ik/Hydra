@@ -54,7 +54,7 @@ metrics:
 
 # Trainer
 trainer:
-  name: averaging
+  name: Averaging
   kwargs:
     optimizers:
       method: SGD
