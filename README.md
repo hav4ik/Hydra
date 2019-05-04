@@ -2,9 +2,10 @@
 
 [Hydra][hydra] is a flexible multi-task learning framework written on [PyTorch 1.0][pytorch]. The following multi-task learning algorithms are implemented:
 
-* Naive (a separate optimizer for each task)
-* Gradients averaging (average gradients to the body)
-* MGDA (described in [Multi-Task Learning as Multi-Objective Optimization, NIPS 2018][mgda])
+* **Naive** &mdash; a separate optimizer for each task
+* **Gradients averaging** &mdash; average out the gradients to the network's body
+* **GradNorm (Upper Bound)** &mdash; modified version of [GradNorm (ICML 2018)][gradnorm]
+* **MGDA** &mdash; described in the paper [Multi-Task Learning as Multi-Objective Optimization (NIPS 2018)][mgda]
 
 # Installation
 
@@ -26,3 +27,4 @@
 [conda]: https://docs.conda.io/en/latest/miniconda.html
 [pytorch]: https://pytorch.org/
 [mgda]: https://papers.nips.cc/paper/7334-multi-task-learning-as-multi-objective-optimization.pdf
+[gradnorm]: https://arxiv.org/abs/1711.02257
