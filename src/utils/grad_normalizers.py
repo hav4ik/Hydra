@@ -15,6 +15,6 @@ def normalize_grads(grads, losses, normalization_type):
 
     # according to documentation, the following are in-place
     transposed = torch.transpose(grads, 1, 0)
-    transposed /= gns
+    transposed /= (gns + 1e-8)
     grads = torch.transpose(transposed, 1, 0)
     return grads
