@@ -1,3 +1,6 @@
+import os
+import yaml
+import torch
 import torch.nn as nn
 
 
@@ -116,11 +119,29 @@ class Hydra(nn.Module):
         }
         return hydra_serialization, self.state_dict()
 
-    def deserialize(self, hydra_serialization, state_dict, strict=True):
+    def deserialize(self, hydra_serialization, state_dict):
         self.controllers = [
             Controller().deserialize(c)
             for c in hydra_serialization['controllers']
         ]
         self.heads = hydra_serialization['heads']
-        self.load_state_dict(state_dict, strict)
+        self.load_state_dict(state_dict)
         return self
+
+    def save(self, basepath):
+        serialized_hydra, state_dict = self.serialize()
+        basepath = os.path.expanduser(basepath)
+        yaml_path = basepath + '.yaml'
+        with open(yaml_path, 'w') as outfile:
+            yaml.dump(serialized_hydra, outfile)
+        pth_path = basepath + '.pth'
+        torch.save(state_dict, pth_path)
+
+    def load(self, basepath):
+        basepath = os.path.expanduser(basepath)
+        yaml_path = basepath + '.yaml'
+        with open(yaml_path, 'r') as stream:
+            serialized_hydra = yaml.safe_load(stream)
+        pth_path = basepath + '.pth'
+        state_dict = torch.load(pth_path)
+        return self.deserialize(serialized_hydra, state_dict)
