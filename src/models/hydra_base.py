@@ -2,7 +2,7 @@ import torch.nn as nn
 
 
 class Controller:
-    def __init__(self, index):
+    def __init__(self, index=None):
         self.index = index
         self.execution_chain = [index]
         self.parent_index = None
@@ -23,6 +23,14 @@ class Controller:
     def __repr__(self):
         return str(self)
 
+    def serialize(self):
+        return self.__dict__
+
+    def deserialize(self, serialized_controller):
+        for k, v in serialized_controller.items():
+            setattr(self, k, v)
+        return self
+
 
 class Hydra(nn.Module):
     def __init__(self):
@@ -42,7 +50,7 @@ class Hydra(nn.Module):
     def register_head(self, block, task_id):
         new_controller = self.register_block(block)
         new_controller.task_id = task_id
-        self.heads[task_id] = new_controller
+        self.heads[task_id] = new_controller.index
         return new_controller
 
     def extra_repr(self):
@@ -61,7 +69,8 @@ class Hydra(nn.Module):
         branching_ids = set()
         for task_id in task_ids:
             branching_point = None
-            task_exec_chain = self.heads[task_id].execution_chain
+            controller = self.controllers[self.heads[task_id]]
+            task_exec_chain = controller.execution_chain
             for i, index in enumerate(task_exec_chain):
                 if index not in execution_order:
                     break
@@ -97,3 +106,21 @@ class Hydra(nn.Module):
             if controller.task_id is not None:
                 outputs[controller.task_id] = x
         return outputs
+
+    def serialize(self):
+        controller_serializations = [
+            c.serialize() for c in self.controllers]
+        hydra_serialization = {
+            'controllers': controller_serializations,
+            'heads': self.heads
+        }
+        return hydra_serialization, self.state_dict()
+
+    def deserialize(self, hydra_serialization, state_dict, strict=True):
+        self.controllers = [
+            Controller().deserialize(c)
+            for c in hydra_serialization['controllers']
+        ]
+        self.heads = hydra_serialization['heads']
+        self.load_state_dict(state_dict, strict)
+        return self
