@@ -48,9 +48,9 @@ class Hydra(nn.Module):
     def extra_repr(self):
         items = '\n  '.join(str(c) for c in self.controllers)
         controllers = '(block controllers):\n  ' + items
-        items =  '\n  '.join(
-                 '({}) -> {}'.format(k, str(c))
-                 for k, c in self.heads.items())
+        items = '\n  '.join(
+                '({}) -> {}'.format(k, str(c))
+                for k, c in self.heads.items())
         heads = '(heads):\n  ' + items
         return controllers + '\n' + heads
 
