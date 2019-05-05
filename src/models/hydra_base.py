@@ -30,6 +30,7 @@ class Controller:
         self.execution_chain = prev_chain + [self.index]
         self.parent_index = controller.index
         controller.children_indices.append(self.index)
+        return self
 
     def __str__(self):
         return '({}): parent={}, children={}'.format(
@@ -68,36 +69,36 @@ class Hydra(nn.Module):
         self.heads = dict()
         self.rep_tensors = dict()
 
-    def register_block(self, block):
+    def add_block(self, module):
         """
         Registers a new Hydra block, automatically adds it to the
         self.blocks and the execution graph.
 
         Args:
-          block: a `nn.Module` object
+          module: a `nn.Module` object
 
         Returns:
           a Controller object for newly added block
         """
         new_index = len(self.blocks)
         new_controller = Controller(new_index)
-        self.blocks.append(block)
+        self.blocks.append(module)
         self.controllers.append(new_controller)
         return new_controller
 
-    def register_head(self, block, task_id):
+    def add_head(self, module, task_id):
         """
         Registers a new Hydra block as a "Head". Same as the method
         `register_block()`, but adds the controller to self.heads.
 
         Args:
-          block:    a `nn.Module` object
+          module:    a `nn.Module` object
           task_id:  an identifier of the task that the head is solving
 
         Returns:
           a Controller object for newly added block
         """
-        new_controller = self.register_block(block)
+        new_controller = self.add_block(module)
         new_controller.task_id = task_id
         self.heads[task_id] = new_controller.index
         return new_controller

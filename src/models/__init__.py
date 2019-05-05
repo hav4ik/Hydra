@@ -37,12 +37,12 @@ class ModelManager:
         last_model = None
         if model_weights is not None:
             last_model = os.path.expanduser(model_weights)
-            model.load_state_dict(torch.load(last_model))
+            model.load(last_model)
         elif len(self.history) > 0:
             last_model = os.path.expanduser(os.path.join(
                     self.checkpoint_dir,
                     self.history[self.last_epoch]['checkpoint']))
-            model.load_state_dict(torch.load(last_model))
+            model.load(last_model)
         return model, last_model
 
     def save_model(self, model, losses, epoch=None):
@@ -54,12 +54,12 @@ class ModelManager:
         if not epoch_n > self.last_epoch:
             raise ValueError('Current epoch ({}) must be larger than last '
                              'epoch ({}).'.format(epoch_n, self.last_epoch))
-        checkpoint_name = '{}.pth'.format(epoch_n)
+        checkpoint_name = '{}_{}'.format(model.__class__.__name__, epoch_n)
         checkpoint_path = os.path.join(self.checkpoint_dir, checkpoint_name)
         self.history[epoch_n] = dict([
             (task_id, losses[task_id]) for task_id in self.task_ids])
         self.history[epoch_n]['checkpoint'] = checkpoint_name
-        torch.save(model.state_dict(), checkpoint_path)
+        model.save(checkpoint_path)
         self.dump_history()
 
     def dump_history(self):

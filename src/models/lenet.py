@@ -1,47 +1,41 @@
+from collections import OrderedDict
 import torch.nn as nn
-import torch.nn.functional as F
+
+from .hydra_base import Hydra
 
 
-class Body(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(1, 20, 5, 1)
-        self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(4*4*50, 500)
-
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = F.relu(self.conv2(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = x.view(-1, 4*4*50)
-        x = F.relu(self.fc1(x))
-        return x
-
-
-class Head(nn.Module):
-    def __init__(self, n_classes):
-        super().__init__()
-        self.fc2 = nn.Linear(500, n_classes)
-
-    def forward(self, x):
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
-
-
-class Lenet(nn.Module):
+class Lenet(Hydra):
     def __init__(self, heads):
         super().__init__()
-        self.body = Body()
 
-        head_dict = dict()
+        # Defining body layers and weights
+        layer1 = nn.Sequential(OrderedDict([
+            ('conv', nn.Conv2d(1, 20, 5)),
+            ('relu', nn.ReLU()),
+            ('pool', nn.MaxPool2d(2))
+        ]))
+        layer2 = nn.Sequential(OrderedDict([
+            ('conv', nn.Conv2d(20, 50, 5)),
+            ('relu', nn.ReLU()),
+            ('pool', nn.MaxPool2d(2))
+        ]))
+        layer3 = nn.Sequential(OrderedDict([
+            ('fc', nn.Linear(4*4*50, 500)),
+            ('relu', nn.ReLU())
+        ]))
+
+        # Register body layers and stack them
+        x = self.add_block(layer1)
+        x = self.add_block(layer2).stack_on(x)
+        x = self.add_block(layer3).stack_on(x)
+
+        # Head constructor
+        def define_head(n_classes):
+            return nn.Sequential(OrderedDict([
+                ('fc', nn.Linear(500, n_classes)),
+                ('softmax', nn.LogSoftmax())]))
+
+        # Define the heads and stack them on
         for head in heads:
-            task_id = head['task_id']
-            head_kwargs = head['kwargs']
-            head_dict[task_id] = Head(**head_kwargs)
-        self.heads = nn.ModuleDict(head_dict)
-
-    def forward(self, x, task_id):
-        x = self.body(x)
-        x = self.heads[task_id](x)
-        return x
+            module = define_head(head['n_classes'])
+            self.add_head(module, head['task_id'])
