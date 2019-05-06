@@ -9,7 +9,7 @@ task_ids:
   - kmnist
 
 # General configuration
-batch_size: 120
+batch_size: 256
 
 # Datasets
 datasets:

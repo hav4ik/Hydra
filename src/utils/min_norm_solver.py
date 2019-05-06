@@ -103,7 +103,7 @@ class MinNormPlanarSolver(nn.Module):
         gamma, cost = self.line_solver_vectorized(vivi, vivj, vjvj)
         offset = torch.argmin(cost)
         i_min, j_min = self.i_triu[offset], self.j_triu[offset]
-        sol = torch.zeros(self.n)
+        sol = torch.zeros(self.n, device=grammian.device)
         sol[i_min], sol[j_min] = gamma[offset], 1. - gamma[offset]
         return sol
 
@@ -148,17 +148,21 @@ class MinNormSolver(nn.Module):
     @torch.no_grad()
     def next_point(self, cur_val, grad):
         proj_grad = grad - (torch.sum(grad) / self.n_ts)
-        lt_zero = torch.nonzero(proj_grad < 0).squeeze()
-        gt_zero = torch.nonzero(proj_grad > 0).squeeze()
+        lt_zero = torch.nonzero(proj_grad < 0)
+        lt_zero = lt_zero.view(lt_zero.numel())
+        gt_zero = torch.nonzero(proj_grad > 0)
+        gt_zero = gt_zero.view(gt_zero.numel())
         tm1 = -cur_val[lt_zero] / proj_grad[lt_zero]
         tm2 = (1. - cur_val[gt_zero]) / proj_grad[gt_zero]
 
-        t = self.one
-        tm1_gt_zero = torch.nonzero(tm1 > 1e-7).squeeze()
+        t = torch.tensor(1., device=grad.device)
+        tm1_gt_zero = torch.nonzero(tm1 > 1e-7)
+        tm1_gt_zero = tm1_gt_zero.view(tm1_gt_zero.numel())
         if tm1_gt_zero.shape[0] > 0:
             t = torch.min(tm1[tm1_gt_zero])
 
-        tm2_gt_zero = torch.nonzero(tm2 > 1e-7).squeeze()
+        tm2_gt_zero = torch.nonzero(tm2 > 1e-7)
+        tm2_gt_zero = tm2_gt_zero.view(tm2_gt_zero.numel())
         if tm2_gt_zero.shape[0] > 0:
             t = torch.min(t, torch.min(tm2[tm2_gt_zero]))
 
