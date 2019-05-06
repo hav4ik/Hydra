@@ -23,7 +23,7 @@ class Controller:
         self.parent_index = None
         self.children_indices = []
         self.task_id = None
-        self.serving_tasks = set()
+        self.serving_tasks = dict()
 
     def stack_on(self, controller):
         """Stacks current controller on top of another controller"""
@@ -186,7 +186,8 @@ class Hydra(nn.Module):
             controller = self.controllers[head_index]
             task_id = controller.task_id
             for index in controller.execution_chain:
-                self.controllers[index].serving_tasks.add(task_id)
+                idx = len(self.controllers[index].serving_tasks)
+                self.controllers[index].serving_tasks[task_id] = idx
 
     def forward(self, input_tensor, task_ids):
         """
