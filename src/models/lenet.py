@@ -39,7 +39,7 @@ class Lenet(Hydra):
         def define_head(n_classes):
             return nn.Sequential(OrderedDict([
                 ('fc', nn.Linear(500, n_classes)),
-                ('softmax', nn.Softmax(dim=1))]))
+                ('softmax', nn.LogSoftmax(dim=1))]))
 
         # Define the heads and stack them on
         for head in heads:

@@ -26,8 +26,7 @@ class Naive(BaseTrainer):
         optimizer_def = getattr(optim, optimizers['method'])
         optimizers_dict = dict()
         for task_id in task_ids:
-            task_params = list(model.body.parameters()) + \
-                          list(model.heads[task_id].parameters())
+            task_params = list(model.parameters(task_id))
             optimizers_dict[task_id] = optimizer_def(
                     task_params, **optimizers['kwargs'])
         self.optimizers = optimizers_dict
@@ -67,7 +66,7 @@ class Naive(BaseTrainer):
             data, target = data.to(self.device), target.to(self.device)
 
             self.optimizers[task_id].zero_grad()
-            output = self.model(data, task_id=task_id)
+            output = self.model(data, task_id)
             loss = self.losses[task_id](output, target)
             loss.backward()
             self.optimizers[task_id].step()

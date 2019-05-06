@@ -41,7 +41,7 @@ class BaseTrainer:
                 metric = torch.tensor(0.).to(self.device)
                 for batch_idx, (data, target) in enumerate(loader):
                     data, target = data.to(self.device), target.to(self.device)
-                    output = self.model(data, task_id=task_id)
+                    output = self.model(data, task_id)
                     loss += self.losses[task_id](output, target).sum()
                     metric += self.metrics[task_id](output, target)
                     pbar.update()
