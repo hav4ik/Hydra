@@ -6,6 +6,7 @@ out_dir: ~/data/out
 task_ids:
   - mnist
   - fashion
+  - kmnist
 
 # General configuration
 batch_size: 120
@@ -22,6 +23,11 @@ datasets:
     kwargs:
       dataset: FashionMNIST
 
+  - task_id: kmnist
+    name: toy
+    kwargs:
+      dataset: KMNIST
+
 # Models
 models:
   name: Lenet
@@ -34,6 +40,9 @@ models:
       - task_id: fashion
         n_classes: 10
 
+      - task_id: kmnist
+        n_classes: 10
+
 # Loss functions
 losses:
   - task_id: mnist
@@ -42,12 +51,18 @@ losses:
   - task_id: fashion
     name: nll_loss
 
+  - task_id: kmnist
+    name: nll_loss
+
 # Evaluation metrics
 metrics:
   - task_id: mnist
     name: corrects
 
   - task_id: fashion
+    name: corrects
+
+  - task_id: kmnist
     name: corrects
 
 # Trainer
