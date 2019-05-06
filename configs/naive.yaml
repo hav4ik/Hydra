@@ -8,7 +8,7 @@ task_ids:
   - fashion
 
 # General configuration
-batch_size: 96
+batch_size: 120
 
 # Datasets
 datasets:

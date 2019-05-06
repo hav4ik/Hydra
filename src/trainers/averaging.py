@@ -16,23 +16,19 @@ class Averaging(BaseTrainer):
                  train_loaders,
                  test_loaders,
                  tensorboard_writer,
-                 optimizers):
+                 optimizers,
+                 loss_weights):
 
         super().__init__(
                 device, model, model_manager, task_ids, losses, metrics,
                 train_loaders, test_loaders, tensorboard_writer)
 
         optimizer_def = getattr(optim, optimizers['method'])
-        head_optimizers = dict()
-        for task_id in task_ids:
-            head_optimizers[task_id] = optimizer_def(
-                    model.heads[task_id].parameters(),
-                    **optimizers['kwargs'])
-        body_optimizers = optimizer_def(
-                model.body.parameters(), **optimizers['kwargs'])
-        optimizers_dict = {
-                'body': body_optimizers, 'head': head_optimizers}
-        self.optimizers = optimizers_dict
+        self.optimizers = optimizer_def(
+                model.parameters(), **optimizers['kwargs'])
+        self.loss_weights = dict(
+                (k, torch.tensor(v, device=device))
+                for k, v in loss_weights.items())
 
     def train_epoch(self):
         """Trains the model on all data loaders for an epoch.
@@ -46,23 +42,25 @@ class Averaging(BaseTrainer):
                 [(k, torch.tensor(0.).to(self.device)) for k in self.task_ids])
         total_batches = min([len(loader)
                              for _, loader in self.train_loaders.items()])
-        num_tasks = torch.tensor(len(self.task_ids)).to(self.device)
+        num_branches = dict()
+        for idx, (ctrl, block) in enumerate(self.model.control_blocks()):
+            n_branches = max(len(ctrl.serving_tasks), 1.)
+            num_branches[idx] = torch.tensor(n_branches, device=self.device)
 
         pbar = tqdm(desc='  train', total=total_batches, ascii=True)
         for batch_idx in range(total_batches):
+            self.model.zero_grad()
+
             # for each task, calculate head grads and accumulate body grads
-            for task_id in self.task_ids:
+            for task_idx, task_id in enumerate(self.task_ids):
                 data, target = loader_iterators[task_id].next()
                 data, target = data.to(self.device), target.to(self.device)
 
-                # prepare grads
-                self.model.body.zero_grad()
-                self.model.heads[task_id].zero_grad()
-
                 # do inference with backward
-                output = self.model(data, task_id=task_id)
+                output = self.model(data, task_id)
                 loss = self.losses[task_id](output, target)
-                loss.backward()
+                wloss = self.loss_weights[task_id] * loss
+                wloss.backward()
 
                 # calculate training metrics
                 with torch.no_grad():
@@ -71,13 +69,10 @@ class Averaging(BaseTrainer):
                         self.metrics[task_id](output, target)
 
             # averaging out body gradients and optimize the body
-            for p in self.model.body.parameters():
-                p.grad /= num_tasks
-            self.optimizers['body'].step()
-
-            # optimize heads
-            for task_id in self.task_ids:
-                self.optimizers['head'][task_id].step()
+            for idx, (_, block) in enumerate(self.model.control_blocks()):
+                for p in block.parameters():
+                    p.grad /= num_branches[idx]
+            self.optimizers.step()
             pbar.update()
 
         for task_id in self.task_ids:
