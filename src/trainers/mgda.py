@@ -27,19 +27,14 @@ class MGDA(BaseTrainer):
 
         # Load Optimizers
         optimizer_def = getattr(optim, optimizers['method'])
-        head_optimizers = dict()
-        for task_id in task_ids:
-            head_optimizers[task_id] = optimizer_def(
-                    model.heads[task_id].parameters(),
-                    **optimizers['kwargs'])
-        body_optimizers = optimizer_def(
-                model.body.parameters(), **optimizers['kwargs'])
-        optimizers_dict = {
-                'body': body_optimizers, 'head': head_optimizers}
-        self.grad_solver = MinNormSolver(len(task_ids)).to(device)
+        self.optimizer = optimizer_def(
+                self.model.parameters(), **optimizers['kwargs'])
+        self.grad_solver = [None] * len(model.blocks)
+        self.temp_grad = [None] * len(model.blocks)
+        for idx, (controller, block) in enumerate(model.control_blocks()):
+            self.grad_solver[idx] = MinNormSolver(
+                    len(controller.serving_tasks)).to(device)
         self.normalize = normalize
-        self.temp_body_grad = None
-        self.optimizers = optimizers_dict
 
     def train_epoch(self):
         """Trains the model on all data loaders for an epoch.
@@ -56,10 +51,10 @@ class MGDA(BaseTrainer):
         total_batches = min([len(loader)
                              for _, loader in self.train_loaders.items()])
         pareto_count = 0
-
-        pbar = tqdm(desc='  train', total=total_batches, ascii=True)
         if self.normalize is not None:
             loss_log = torch.empty(len(self.task_ids), device=self.device)
+
+        pbar = tqdm(desc='  train', total=total_batches, ascii=True)
         for batch_idx in range(total_batches):
             # for each task, calculate head grads and accumulate body grads
             for task_idx, task_id in enumerate(self.task_ids):
@@ -67,30 +62,29 @@ class MGDA(BaseTrainer):
                 data, target = data.to(self.device), target.to(self.device)
 
                 # prepare grads
-                self.model.body.zero_grad()
-                self.model.heads[task_id].zero_grad()
+                self.model.zero_grad()
 
                 # do inference with backward
-                output = self.model(data, task_id=task_id)
+                output = self.model(data, task_id)
                 loss = self.losses[task_id](output, target)
                 loss.backward()
                 if self.normalize is not None:
                     loss_log[task_idx] = loss
 
-                # optimize the heads right away
-                self.optimizers['head'][task_id].step()
-
                 # save the body grads to temp_body_grad
                 with torch.no_grad():
-                    if self.temp_body_grad is None:
-                        self.temp_body_grad = []
-                        for p in self.model.body.parameters():
-                            self.temp_body_grad.append(torch.empty(
-                                len(self.task_ids), p.grad.numel(),
-                                device=self.device))
-                    for i, p in enumerate(self.model.body.parameters()):
-                        self.temp_body_grad[i][task_idx] = \
-                            p.grad.view(p.grad.numel())
+                    for ctrl, block in self.model.control_blocks(task_id):
+                        if self.temp_grad[ctrl.index] is None:
+                            self.temp_grad[ctrl.index] = []
+                            for p in block.parameters():
+                                self.temp_grad[ctrl.index].append(torch.empty(
+                                    len(ctrl.serving_tasks), p.grad.numel(),
+                                    device=self.device))
+
+                        for i, p in enumerate(block.parameters()):
+                            grad_idx = ctrl.serving_tasks[task_id]
+                            self.temp_grad[ctrl.index][i][grad_idx] = \
+                                p.grad.view(p.grad.numel())
 
                 # calculate training metrics
                 with torch.no_grad():
@@ -98,21 +92,30 @@ class MGDA(BaseTrainer):
                     train_metrics_ts[task_id] += \
                         self.metrics[task_id](output, target)
 
-            # Averaging out body gradients and optimize the body
+            # Normalize grads and solving the min-norm problem
             with torch.no_grad():
-                for i, p in enumerate(self.model.body.parameters()):
-                    if self.normalize is not None:
-                        self.temp_body_grad[i] = normalize_grads(
-                                self.temp_body_grad[i], loss_log,
-                                self.normalize)
-                    sol = self.grad_solver(self.temp_body_grad[i])
-                    grad_star = torch.matmul(
-                            sol.unsqueeze_(0), self.temp_body_grad[i])
-                    if torch.max(torch.abs(grad_star)) < 1e-5:
-                        pareto_count += 1
-                    p.grad.copy_(grad_star.view(p.grad.shape))
+                for idx, (c, block) in enumerate(self.model.control_blocks()):
+                    assert idx == c.index
+                    loss_idx = [i for i, k in enumerate(self.task_ids)
+                                if k in c.serving_tasks]
+                    for i, p in enumerate(block.parameters()):
+                        if self.temp_grad[idx][i].shape[0] > 1:
+                            if self.normalize is not None:
+                                self.temp_grad[idx][i] = normalize_grads(
+                                        self.temp_grad[idx][i],
+                                        loss_log[loss_idx],
+                                        self.normalize)
+                            sol = self.grad_solver[idx](self.temp_grad[idx][i])
+                            grad_star = torch.matmul(
+                                    sol.unsqueeze_(0), self.temp_grad[idx][i])
+                        else:
+                            grad_star = self.temp_grad[idx][i]
 
-            self.optimizers['body'].step()
+                        if torch.max(torch.abs(grad_star)) < 1e-5:
+                            pareto_count += 1
+                        p.grad.copy_(grad_star.view(p.grad.shape))
+
+            self.optimizer.step()
             pbar.update()
 
         with torch.no_grad():

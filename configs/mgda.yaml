@@ -8,7 +8,7 @@ task_ids:
   - fashion
 
 # General configuration
-batch_size: 96
+batch_size: 120
 
 # Datasets
 datasets:
@@ -29,20 +29,18 @@ models:
   kwargs:
     heads:
       - task_id: mnist
-        kwargs:
-          n_classes: 10
+        n_classes: 10
 
       - task_id: fashion
-        kwargs:
-          n_classes: 10
+        n_classes: 10
 
 # Loss functions
 losses:
   - task_id: mnist
-    name: cross_entropy
+    name: nll_loss
 
   - task_id: fashion
-    name: cross_entropy
+    name: nll_loss
 
 # Evaluation metrics
 metrics:
