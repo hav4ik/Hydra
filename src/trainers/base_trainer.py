@@ -15,6 +15,7 @@ class BaseTrainer:
                  train_loaders,
                  test_loaders,
                  tensorboard_writer,
+                 patience=None,
                  **kwargs):
 
         self.device = device
@@ -26,6 +27,10 @@ class BaseTrainer:
         self.train_loaders = train_loaders
         self.test_loaders = test_loaders
         self.tensorboard_writer = tensorboard_writer
+
+        self.patience = patience
+        self.best_score = None
+        self.counter = 0
 
     def eval_epoch(self):
         self.model.eval()
@@ -54,7 +59,7 @@ class BaseTrainer:
         raise NotImplementedError
 
     def run_epoch(self, epoch):
-        log_utils.print_on_epoch_begin(epoch)
+        log_utils.print_on_epoch_begin(epoch, self.counter)
 
         train_losses, train_metrics = self.train_epoch()
         eval_losses, eval_metrics = self.eval_epoch()
@@ -77,4 +82,20 @@ class BaseTrainer:
                     '{}/val/metric'.format(task_id),
                     eval_metrics[task_id], epoch)
 
+        if self.patience is not None:
+            if self.best_score is None:
+                self.best_score = eval_losses
+
+            has_improved = True
+            for task_id in self.task_ids:
+                has_improved = has_improved and \
+                    (self.best_score[task_id] + 1e-5 >= eval_losses[task_id])
+            if has_improved:
+                self.best_score = eval_losses
+                self.counter = 0
+            else:
+                self.counter += 1
         return eval_losses, eval_metrics
+
+    def early_stop(self):
+        return self.counter > self.patience

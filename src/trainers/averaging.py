@@ -17,11 +17,12 @@ class Averaging(BaseTrainer):
                  test_loaders,
                  tensorboard_writer,
                  optimizers,
-                 loss_weights):
+                 loss_weights,
+                 patience=None):
 
         super().__init__(
                 device, model, model_manager, task_ids, losses, metrics,
-                train_loaders, test_loaders, tensorboard_writer)
+                train_loaders, test_loaders, tensorboard_writer, patience)
 
         optimizer_def = getattr(optim, optimizers['method'])
         self.optimizers = optimizer_def(

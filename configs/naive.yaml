@@ -74,3 +74,4 @@ trainer:
       kwargs:
         lr: 0.01
         momentum: 0.9
+    patience: 7

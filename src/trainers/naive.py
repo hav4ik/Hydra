@@ -17,11 +17,12 @@ class Naive(BaseTrainer):
                  train_loaders,
                  test_loaders,
                  tensorboard_writer,
-                 optimizers):
+                 optimizers,
+                 patience=None):
 
         super().__init__(
                 device, model, model_manager, task_ids, losses, metrics,
-                train_loaders, test_loaders, tensorboard_writer)
+                train_loaders, test_loaders, tensorboard_writer, patience)
 
         optimizer_def = getattr(optim, optimizers['method'])
         optimizers_dict = dict()

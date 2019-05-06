@@ -72,3 +72,4 @@ trainer:
     optimizers:
       method: Adam
       kwargs: {}
+    patience: 7

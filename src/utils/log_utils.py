@@ -93,9 +93,18 @@ def print_eval_info(train_losses, train_metrics, eval_losses, eval_metrics):
     print(table_str)
 
 
-def print_on_epoch_begin(epoch):
-    print(colored('\nEPOCH {}'.format(epoch), 'green'))
+def print_on_epoch_begin(epoch, counter):
+    if counter > 0:
+        print(colored(
+                '\nEPOCH {} (has not been improved '
+                'in {} epochs)'.format(epoch, counter), 'green'))
+    else:
+        print(colored('\nEPOCH {}'.format(epoch), 'green'))
 
 
 def print_arbitrary_info(name, s):
     print(colored('\n  [{}]:'.format(name), 'cyan'), str(s))
+
+
+def print_early_stopping():
+    print(colored('\nSTOPPING EARLY', 'green'))

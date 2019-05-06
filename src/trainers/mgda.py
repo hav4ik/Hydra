@@ -19,11 +19,12 @@ class MGDA(BaseTrainer):
                  test_loaders,
                  tensorboard_writer,
                  optimizers,
-                 normalize='loss+'):
+                 normalize='loss+',
+                 patience=None):
 
         super().__init__(
                 device, model, model_manager, task_ids, losses, metrics,
-                train_loaders, test_loaders, tensorboard_writer)
+                train_loaders, test_loaders, tensorboard_writer, patience)
 
         # Load Optimizers
         optimizer_def = getattr(optim, optimizers['method'])
