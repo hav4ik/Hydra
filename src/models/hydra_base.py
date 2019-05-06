@@ -189,6 +189,9 @@ class Hydra(nn.Module):
                 self.rep_tensors[index] = x
             if controller.task_id is not None:
                 outputs[controller.task_id] = x
+
+        if isinstance(task_ids, str):
+            return outputs[task_ids]
         return outputs
 
     def serialize(self):
