@@ -163,6 +163,19 @@ class Hydra(nn.Module):
                 for param in self.blocks[index].parameters():
                     yield param
 
+    def control_blocks(self, task_ids=None):
+        """
+        Yields an iterator over the blocks. If `task_ids` are specified,
+        only blocks flowing towards corresponding heads will be yielded.
+        """
+        if task_ids is None:
+            for controller, block in zip(self.controllers, self.blocks):
+                yield controller, block
+        else:
+            execution_order, _ = self.execution_plan(task_ids)
+            for index in execution_order:
+                yield self.controllers[index], self.blocks[index]
+
     def forward(self, input_tensor, task_ids):
         """
         Defines the computation performed at every call. Dynamically
