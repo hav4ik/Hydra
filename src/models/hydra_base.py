@@ -23,6 +23,7 @@ class Controller:
         self.parent_index = None
         self.children_indices = []
         self.task_id = None
+        self.serving_tasks = set()
 
     def stack_on(self, controller):
         """Stacks current controller on top of another controller"""
@@ -33,9 +34,9 @@ class Controller:
         return self
 
     def __str__(self):
-        return '({}): parent={}, children={}'.format(
-                self.index, self.parent_index,
-                self.children_indices)
+        return '({}): parent={}, children={}, serving=[{}]'.format(
+                self.index, self.parent_index, self.children_indices,
+                ', '.join(str(task_id) for task_id in self.serving_tasks))
 
     def __repr__(self):
         return str(self)
@@ -175,6 +176,17 @@ class Hydra(nn.Module):
             execution_order, _ = self.execution_plan(task_ids)
             for index in execution_order:
                 yield self.controllers[index], self.blocks[index]
+
+    def build(self):
+        """
+        Builds the model. Calculates additional stuffs to make the Hydra
+        truly powerful.
+        """
+        for _, head_index in self.heads.items():
+            controller = self.controllers[head_index]
+            task_id = controller.task_id
+            for index in controller.execution_chain:
+                self.controllers[index].serving_tasks.add(task_id)
 
     def forward(self, input_tensor, task_ids):
         """

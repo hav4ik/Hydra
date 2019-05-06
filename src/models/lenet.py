@@ -46,3 +46,6 @@ class Lenet(Hydra):
             module = define_head(head['n_classes'])
             h = self.add_head(module, head['task_id'])
             h.stack_on(x)
+
+        # Don't forget to build the model
+        self.build()
