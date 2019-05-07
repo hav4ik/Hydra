@@ -2,6 +2,8 @@ import os
 import yaml
 import torch
 import torch.nn as nn
+from copy import deepcopy
+from collections import deque
 
 
 class Controller:
@@ -58,10 +60,11 @@ class Hydra(nn.Module):
     parameters and arbitrary branching schema.
 
     Attributes:
-      blocks:       a `nn.ModuleList` of building blocks of Hydra
-      controllers:  a list of controllers accompanying each block
-      heads:        dictionary {task_id: index} of Hydra's heads
-      rep_tensors:  stores the tensors at branching points
+      blocks:            a `nn.ModuleList` of building blocks of Hydra
+      controllers:       a list of controllers accompanying each block
+      heads:             dictionary {task_id: index} of Hydra's heads
+      rep_tensors:       stores the tensors at branching points
+      branching_points:  indices of blocks with more than one children
     """
     def __init__(self):
         super().__init__()
@@ -177,6 +180,84 @@ class Hydra(nn.Module):
             execution_order, _ = self.execution_plan(task_ids)
             for index in execution_order:
                 yield self.controllers[index], self.blocks[index]
+
+    def create_branch(self, index, branches, device=None):
+        """
+        Dynamically clones `self.blocks[index]`, and stacks the branches
+        specified by `branches` on top of the newly cloned branch.
+
+        [Before]                         [After]
+                    __ ...........           -------O--- ...........
+            index  /                        / index
+        --O-------O--- branches[0]       --O          __ branches[0]
+                   \__                      \ clone  /
+                       branches[1]           -------O--- branches[1]
+
+        Args:
+          index:     index of the block to clone
+          branches:  indices of block's children to stach on the clone
+          device:    device to spawn the clone on, can be decided later
+        """
+        if index in self.heads:
+            raise ValueError("Cannot split Hydra's head.")
+        controller = self.controllers[index]
+        for b in branches:
+            if b not in controller.children_indices:
+                raise ValueError("Indices of branches should be in "
+                                 "controller's chilred_indices.")
+        are_equal = True
+        for b in controller.children_indices:
+            if b not in branches:
+                are_equal = False
+        if are_equal:
+            return index
+
+        block = self.blocks[index]
+        cloned_block = deepcopy(block)
+        if device is not None:
+            cloned_block = cloned_block.to(device)
+        cloned_controller = deepcopy(controller)
+        new_index = len(self.controllers)
+        cloned_controller.index = new_index
+        self.blocks.append(cloned_block)
+        self.controllers.append(cloned_controller)
+
+        if cloned_controller.parent_index is not None:
+            parent = self.controllers[cloned_controller.parent_index]
+            parent.children_indices.append(new_index)
+        cloned_controller.execution_chain = [
+            i if i != index else new_index
+            for i in cloned_controller.execution_chain]
+
+        controller_deque = deque()
+        controller_deque.extend(branches)
+        while len(controller_deque) > 0:
+            tmp_index = controller_deque.popleft()
+            tmp_controller = self.controllers[tmp_index]
+            if tmp_controller.parent_index == index:
+                tmp_controller.parent_index = new_index
+            tmp_controller.execution_chain = [
+                i if i != index else new_index
+                for i in tmp_controller.execution_chain]
+            controller_deque.extend(tmp_controller.children_indices)
+
+        controller.children_indices = [
+            i for i in controller.children_indices
+            if i not in branches]
+        cloned_controller.children_indices = branches
+
+        controller.serving_tasks = dict()
+        for i in controller.children_indices:
+            tmp_controller = self.controllers[i]
+            controller.serving_tasks.update(
+                tmp_controller.serving_tasks)
+        cloned_controller.serving_tasks = dict()
+        for i in cloned_controller.children_indices:
+            tmp_controller = self.controllers[i]
+            cloned_controller.serving_tasks.update(
+                tmp_controller.serving_tasks)
+
+        return cloned_controller, cloned_block
 
     def build(self):
         """
