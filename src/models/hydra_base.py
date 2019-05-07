@@ -210,7 +210,7 @@ class Hydra(nn.Module):
             if b not in branches:
                 are_equal = False
         if are_equal:
-            return index
+            return self.controllers[index], self.blocks[index]
 
         block = self.blocks[index]
         cloned_block = deepcopy(block)
