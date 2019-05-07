@@ -257,6 +257,10 @@ class Hydra(nn.Module):
             cloned_controller.serving_tasks.update(
                 tmp_controller.serving_tasks)
 
+        self.rep_tensors.clear()
+        _, self.branching_points = \
+            self.execution_plan(list(self.heads.keys()))
+
         return cloned_controller, cloned_block
 
     def build(self):
