@@ -194,9 +194,16 @@ class Hydra(nn.Module):
                        branches[1]           -------O--- branches[1]
 
         Args:
-          index:     index of the block to clone
-          branches:  indices of block's children to stach on the clone
-          device:    device to spawn the clone on, can be decided later
+          index:      index of the block to clone
+          branches:   indices of block's children to stach on the clone
+          device:     device to spawn the clone on, can be decided later
+
+        Raises:
+          ValueError: in case invalid `index` or `branches` are specified
+
+        Returns:
+          controller: controller object of the newly created branch
+          block:      module of the newly created branch
         """
         if index in self.heads:
             raise ValueError("Cannot split Hydra's head.")
@@ -262,6 +269,58 @@ class Hydra(nn.Module):
             self.execution_plan(list(self.heads.keys()))
 
         return cloned_controller, cloned_block
+
+    def split(self, index, branching_scheme):
+        """
+        Splits a Hydra's block into several blocks, according to the
+        `branching_scheme`. Results of `split(0, [[1], [2,3], [4,5]])`:
+
+        | B |  (1) (2) (3) (4) (5)     | A |  (1) (2) (3) (4) (5)
+        | E |   |   |   |   |   |      | F |   |   |   |   |   |
+        | F |   +---+---|---+---+      | T |   |   |---+   |---+
+        | O |          (0)             | E |  (0) (6)     (7)
+        | R |           |              | R |   |   |       |
+        | E |          (*)             |   |  (*)--+-------+
+
+        Args:
+          index:            index of the block to split
+          branching_scheme: list of list of indices (as example above)
+
+        Raises:
+          ValueError:       in case invalid parameters are specified
+
+        Returns:
+          controllers:      list of controllers of splitted branches
+          blocks:           list of blocks - the splitted branches
+        """
+        if index not in self.branching_points:
+            raise ValueError("You can only split layers which indices "
+                             "are in `Hydra.branching_points`.")
+
+        controller = self.controllers[index]
+        block = self.blocks[index]
+
+        total_branches = set()
+        for branch in branching_scheme:
+            total_branches.update(set(branch))
+        if not total_branches == set(controller.children_indices):
+            raise ValueError("The union of the branches should be "
+                             "equal to `controller.children_indices`.")
+
+        for i in range(len(branching_scheme)):
+            scheme_a = set(branching_scheme[i])
+            for j in range(i + 1, len(branching_scheme)):
+                scheme_b = set(branching_scheme[j])
+                if not scheme_a.isdisjoint(scheme_b):
+                    raise ValueError("The branching schemes should "
+                                     "be disjoint to each other.")
+
+        new_controllers, new_blocks = [controller], [block]
+        for branch in branching_scheme[1:]:
+            tmp_ctrl, tmp_block = self.create_branch(index, branch)
+            new_controllers.append(tmp_ctrl)
+            new_blocks.append(tmp_block)
+        return new_controllers, new_blocks
 
     def build(self):
         """
