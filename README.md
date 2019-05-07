@@ -4,7 +4,6 @@
 
 * **Naive** &mdash; a separate optimizer for each task
 * **Gradients averaging** &mdash; average out the gradients to the network's body
-* **GradNorm (Upper Bound)** &mdash; modified version of [GradNorm (ICML 2018)][gradnorm]
 * **MGDA** &mdash; described in the paper [Multi-Task Learning as Multi-Objective Optimization (NIPS 2018)][mgda]
 
 # Installation
