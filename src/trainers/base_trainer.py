@@ -5,6 +5,22 @@ from utils import log_utils
 
 
 class BaseTrainer:
+    """
+    Base class for training scripts. Just a convenient wrapper, with
+    evaluation and early stopping functions already implemented.
+
+    Attributes:
+      device:               either 'cuda' or 'cpu'
+      model:                instance of a class, inherited from `Hydra`
+      model_manager:        instance of a `ModelManager` class
+      task_ids:             list of unique task ids
+      losses:               dictionary of losses {task_id: loss_function}
+      metrics:              dictionary of metrics {task_id: metric}
+      train_loaders:        an instance of `torch.utils.data.DataLoader`
+      test_loaders:         an instance of `torch.utils.data.DataLoader`
+      tensorboard_writer:   an instance of `tensorboardX.SummaryWriter`
+    """
+
     def __init__(self,
                  device,
                  model,
@@ -33,6 +49,8 @@ class BaseTrainer:
         self.counter = 0
 
     def eval_epoch(self):
+        """Evaluates `self.model` for one epoch over test `self.test_loaders`
+        """
         self.model.eval()
         total_batches = sum([len(loader)
                             for _, loader in self.test_loaders.items()])
@@ -56,9 +74,13 @@ class BaseTrainer:
         return eval_losses, eval_metrics
 
     def train_epoch(self):
+        """Trains `self.model` for one epoch over test `self.test_loaders`
+        """
         raise NotImplementedError
 
     def run_epoch(self, epoch):
+        """Runs `train_epoch()` and `test_epoch()` for one epoch
+        """
         log_utils.print_on_epoch_begin(epoch, self.counter)
 
         train_losses, train_metrics = self.train_epoch()
@@ -98,4 +120,6 @@ class BaseTrainer:
         return eval_losses, eval_metrics
 
     def early_stop(self):
+        """Returns `True` if `self.model` hasn't improved for a long time
+        """
         return self.counter > self.patience
