@@ -10,7 +10,7 @@ import models
 import trainers
 
 
-def import_data_loaders(config, n_workers):
+def import_data_loaders(config, n_workers, verbose=1):
     """Import datasets and wrap them into DataLoaders from configuration
     """
     train_loaders, test_loaders = dict(), dict()
@@ -29,11 +29,11 @@ def import_data_loaders(config, n_workers):
                 num_workers=n_workers)
         train_loaders[dataset_config['task_id']] = train_loader
         test_loaders[dataset_config['task_id']] = test_loader
-    log_utils.print_datasets_info(train_loaders, test_loaders)
+    log_utils.print_datasets_info(train_loaders, test_loaders, verbose)
     return train_loaders, test_loaders
 
 
-def import_models(config, checkpoints_logdir, device):
+def import_models(config, checkpoints_logdir, device, verbose=1):
     """Import model from configuration file
     """
     model_manager = models.ModelManager(checkpoints_logdir, config['task_ids'])
@@ -42,7 +42,7 @@ def import_models(config, checkpoints_logdir, device):
             model_weights=config['models']['weights'],
             model_kwargs=config['models']['kwargs'])
     model = model.to(device)
-    log_utils.print_model_info(model, last_ckpt)
+    log_utils.print_model_info(model, last_ckpt, verbose)
     return model, model_manager
 
 
@@ -62,7 +62,8 @@ def run(config,
         epochs,
         n_workers=1,
         resume=False,
-        updates=None):
+        updates=None,
+        verbose=1):
     """Main runner that dynamically imports and executes other modules
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,8 +75,10 @@ def run(config,
     tensorboard_logdir, checkpoints_logdir = \
         log_utils.prepare_dirs(cfg['experiment'], cfg['out_dir'], resume)
 
-    train_loaders, test_loaders = import_data_loaders(cfg, n_workers)
-    model, model_manager = import_models(cfg, checkpoints_logdir, device)
+    train_loaders, test_loaders = import_data_loaders(
+            cfg, n_workers, verbose)
+    model, model_manager = import_models(
+            cfg, checkpoints_logdir, device, verbose)
     losses, metrics = import_losses_and_metrics(cfg)
     tensorboard_writer = SummaryWriter(tensorboard_logdir)
 
@@ -108,10 +111,12 @@ if __name__ == '__main__':
     parser.add_argument('-u', '--update', action='append')
     parser.add_argument('-t', '--workers', type=int, default=1)
     parser.add_argument('-c', '--resume', action='store_true')
+    parser.add_argument('-v', '--verbose', type=int, default=1)
 
     args = parser.parse_args()
     run(config=args.config,
         epochs=args.epochs,
         n_workers=args.workers,
         resume=args.resume,
-        updates=args.update)
+        updates=args.update,
+        verbose=args.verbose)

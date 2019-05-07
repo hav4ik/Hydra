@@ -50,7 +50,7 @@ def print_experiment_info(experiment, out_dir):
     print('  - output: {}'.format(out_dir))
 
 
-def print_datasets_info(train_loaders, test_loaders):
+def print_datasets_info(train_loaders, test_loaders, verbose=1):
     """Pretty prints the basic information about loaded datasets
     """
     print(colored('\nDATASETS:', 'green'))
@@ -58,17 +58,20 @@ def print_datasets_info(train_loaders, test_loaders):
         ntrain = len(train_loaders[task_id].dataset)
         ntest = len(test_loaders[task_id].dataset)
         print('  - {}: {} train, {} test'.format(
-            task_id, ntrain, ntest))
+            colored(task_id, 'magenta', attrs=['bold']),
+            ntrain, ntest))
 
 
-def print_model_info(model, last_checkpoint):
+def print_model_info(model, last_checkpoint, verbose=1):
     """Pretty prints the basic information about the model
     """
-    print(colored('\nMODEL:', 'green'))
+    print(colored('\nMODEL:', 'green'),
+          colored(model.__class__.__name__, 'magenta', attrs=['bold']))
     if last_checkpoint is not None:
         print(colored('  [checkpoint]:', 'cyan'), last_checkpoint)
-    print(colored('  [module]:', 'cyan'))
-    print('  ' + str(model).replace('\n', '\n  '))
+    if verbose > 1:
+        print(colored('  [module]:', 'cyan'))
+        print('  ' + str(model).replace('\n', '\n  '))
 
 
 def print_eval_info(train_losses, train_metrics, eval_losses, eval_metrics):
