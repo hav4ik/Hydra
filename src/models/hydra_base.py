@@ -69,6 +69,7 @@ class Hydra(nn.Module):
         self.controllers = list()
         self.heads = dict()
         self.rep_tensors = dict()
+        self.branching_points = set()
 
     def add_block(self, module):
         """
@@ -188,8 +189,11 @@ class Hydra(nn.Module):
             for index in controller.execution_chain:
                 idx = len(self.controllers[index].serving_tasks)
                 self.controllers[index].serving_tasks[task_id] = idx
+        _, self.branching_points = \
+            self.execution_plan(list(self.heads.keys()))
 
-    def forward(self, input_tensor, task_ids):
+    def forward(self,
+                input_tensor, task_ids, retain_tensors=False):
         """
         Defines the computation performed at every call. Dynamically
         and automatically decides what to run and in what order.
@@ -212,6 +216,8 @@ class Hydra(nn.Module):
             else:
                 x = self.blocks[index](self.rep_tensors[parent_index])
             if index in branching_ids:
+                self.rep_tensors[index] = x
+            if retain_tensors and index in self.branching_points:
                 self.rep_tensors[index] = x
             if controller.task_id is not None:
                 outputs[controller.task_id] = x
