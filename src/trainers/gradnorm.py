@@ -49,35 +49,59 @@ class GradNorm(BaseTrainer):
                              for _, loader in self.train_loaders.items()])
         num_tasks = torch.tensor(len(self.task_ids)).to(self.device)
 
+        # Important stuff
+        relative_inverse = torch.empty(
+                len(self.task_ids), device=self.device)
+        _, all_branching_ids = self.model.execution_plan(self.task_ids)
+        grad_norm = dict([
+                (k, torch.zeros(len(self.task_ids), device=self.device))
+                for k in all_branching_ids])
+
         pbar = tqdm(desc='  train', total=total_batches, ascii=True)
         for batch_idx in range(total_batches):
+            # Stuffs should be manually zeroed
+            tmp_coeffs = self.coeffs.clone().detach()
             self.model.zero_grad()
+            self.grad_optimizer.zero_grad()
+            for k, v in self.model.rep_tensors.items():
+                if v.grad is not None:
+                    v.grad.zero_()
+                if v is not None:
+                    v.detach()
 
             # for each task, calculate head grads, do backprop, and accumulate
             # gradients norms
-            relative_inverse = torch.empty(
-                    len(self.task_ids), device=self.device)
-            grad_norm = torch.empty(len(self.task_ids), device=self.device)
-
             for task_idx, task_id in enumerate(self.task_ids):
                 data, target = loader_iterators[task_id].next()
                 data, target = data.to(self.device), target.to(self.device)
 
                 # do inference and accumulate losses
-                rep = self.model.body(data)
-                rep.retain_grad()
-                weighted_rep = rep * self.coeffs[task_idx]
-                output = self.model.heads[task_id](weighted_rep)
+                output = self.model(data, task_id, retain_tensors=True)
+                for index in all_branching_ids:
+                    self.model.rep_tensors[index].retain_grad()
                 loss = self.losses[task_id](output, target)
-                loss.backward()
+                weighted_loss = tmp_coeffs[task_idx] * loss
+
+                # Not retaining graph since we don't need the values anymore.
+                # Create a graph of gradients to use them later.
+                weighted_loss.backward(retain_graph=False, create_graph=True)
+                output.detach()
 
                 # GradNorm relative inverse training rate accumulation
-                with torch.no_grad():
-                    if not self.has_loss_zero:
-                        self.loss_zero[task_idx] = loss
-                    relative_inverse[task_idx] = loss
-                    grad_norm[task_idx] = torch.sqrt(
-                            torch.sum(torch.pow(rep.grad, 2)))
+                if not self.has_loss_zero:
+                    self.loss_zero[task_idx] = loss.clone().detach()
+                relative_inverse[task_idx] = loss.clone().detach()
+
+                # GradNorm accumulate gradients
+                # wtf_loss = torch.tensor(0, device=self.device)
+                for index in all_branching_ids:
+                    grad = self.model.rep_tensors[index].grad
+                    grad_norm[index][task_idx] = torch.sqrt(
+                            torch.sum(torch.pow(grad, 2)))
+                    # wtf_loss = wtf_loss + grad_norm[index][task_idx]
+                # if task_idx == 1:
+                #     wtf_loss.backward(retain_graph=True, create_graph=True)
+                #     print('WTF 1', self.coeffs.grad.shape)
 
                 # calculate training metrics
                 with torch.no_grad():
@@ -85,27 +109,42 @@ class GradNorm(BaseTrainer):
                     train_metrics_ts[task_id] += \
                         self.metrics[task_id](output, target)
 
+            # GradNorm calculate relative inverse and avg gradients norm
+            self.has_loss_zero = True
+            relative_inverse = relative_inverse / self.loss_zero.clone().detach()
+            relative_inverse = relative_inverse / torch.mean(relative_inverse).clone().detach()
+            relative_inverse = torch.pow(relative_inverse, self.alpha.clone().detach())
+
+            # wtf_loss = torch.tensor(0, device=self.device)
+            # wtf_loss = wtf_loss + grad_norm[2].mean() + relative_inverse.mean() + self.alpha
+            # wtf_loss.backward()
+            # print(self.coeffs.grad)
+            # raise
+
+            coeff_loss = torch.tensor(0., device=self.device)
+            for k, rep_grads in grad_norm.items():
+                mean_norm = torch.mean(rep_grads)
+                target = relative_inverse * mean_norm
+                # print('relainv', relative_inverse)
+                # print('target', target, mean_norm)
+                coeff_loss = coeff_loss + mean_norm.mean()
+                # coeff_loss = coeff_loss + \
+                #     torch.sum(torch.abs(rep_grads - target))
+
+            # GradNorm optimize coefficients
+            coeff_loss.backward()
+
+            # self.coeffs.grad = tmp_coeffs.grad.copy().detach()
+            # self.grad_optimizer.step()
+
             # optimize the model
             self.model_optimizer.step()
 
-            # GradNorm calculate relative inverse and avg gradients norm
-            self.has_loss_zero = True
-            with torch.no_grad():
-                relative_inverse /= self.loss_zero
-                relative_inverse /= torch.mean(relative_inverse)
-                mean_norm = torch.mean(grad_norm)
-                targets = torch.pow(relative_inverse, self.alpha) * mean_norm
 
-            # GradNorm optimize coefficients
-            self.grad_optimizer.zero_grad()
-            coeff_loss = torch.sum(torch.abs(
-                self.coeffs * grad_norm - targets))
-            coeff_loss.backward()
-            self.grad_optimizer.step()
 
-            with torch.no_grad():
-                self.coeffs /= self.coeffs.sum()
-                self.coeffs *= num_tasks
+            # with torch.no_grad():
+            #     self.coeffs /= self.coeffs.sum()
+            #     self.coeffs *= num_tasks
             pbar.update()
 
         for task_id in self.task_ids:
