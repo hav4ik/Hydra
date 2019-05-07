@@ -19,6 +19,7 @@ class MGDA(BaseTrainer):
                  test_loaders,
                  tensorboard_writer,
                  optimizers,
+                 mode='phase_2',
                  normalize='loss+',
                  patience=None):
 
@@ -35,6 +36,7 @@ class MGDA(BaseTrainer):
         for idx, (controller, block) in enumerate(model.control_blocks()):
             self.grad_solver[idx] = MinNormSolver(
                     len(controller.serving_tasks)).to(device)
+        self.mode = mode
         self.normalize = normalize
 
     def train_epoch(self):
@@ -106,9 +108,14 @@ class MGDA(BaseTrainer):
                                         self.temp_grad[idx][i],
                                         loss_log[loss_idx],
                                         self.normalize)
-                            sol = self.grad_solver[idx](self.temp_grad[idx][i])
-                            grad_star = torch.matmul(
-                                    sol.unsqueeze_(0), self.temp_grad[idx][i])
+                            if self.mode == 'phase_2':
+                                sol = self.grad_solver[idx](
+                                        self.temp_grad[idx][i])
+                                grad_star = torch.matmul(
+                                        sol.unsqueeze_(0),
+                                        self.temp_grad[idx][i])
+                            else:
+                                grad_star = self.temp_grad[idx][i].mean(0)
                         else:
                             grad_star = self.temp_grad[idx][i]
 

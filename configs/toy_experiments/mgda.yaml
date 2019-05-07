@@ -73,3 +73,4 @@ trainer:
       method: Adam
       kwargs: {}
     patience: 7
+    mode: phase_2
