@@ -61,11 +61,14 @@ def import_losses_and_metrics(config):
 def run(config,
         epochs,
         n_workers=1,
-        resume=False):
+        resume=False,
+        updates=None):
     """Main runner that dynamically imports and executes other modules
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cfg = config_utils.read_config(config)
+    if updates is not None:
+        cfg = config_utils.update_config(cfg, updates)
     log_utils.print_experiment_info(cfg['experiment'], cfg['out_dir'])
 
     tensorboard_logdir, checkpoints_logdir = \
@@ -102,6 +105,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('config')
     parser.add_argument('-n', '--epochs', type=int, default=1)
+    parser.add_argument('-u', '--update', action='append')
     parser.add_argument('-t', '--workers', type=int, default=1)
     parser.add_argument('-c', '--resume', action='store_true')
 
@@ -109,4 +113,5 @@ if __name__ == '__main__':
     run(config=args.config,
         epochs=args.epochs,
         n_workers=args.workers,
-        resume=args.resume)
+        resume=args.resume,
+        updates=args.update)
