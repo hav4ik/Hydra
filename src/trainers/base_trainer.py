@@ -122,4 +122,6 @@ class BaseTrainer:
     def early_stop(self):
         """Returns `True` if `self.model` hasn't improved for a long time
         """
+        if self.patience is None:
+            return False
         return self.counter > self.patience
