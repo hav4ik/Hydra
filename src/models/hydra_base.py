@@ -109,6 +109,10 @@ class Hydra(nn.Module):
         return new_controller
 
     def extra_repr(self):
+        """
+        To be displayed each time one calls `repr()`, together with
+        the default output of `nn.Module`.
+        """
         items = '\n  '.join(str(c) for c in self.controllers)
         controllers = '(block controllers):\n  ' + items
         items = '\n  '.join(
@@ -322,6 +326,56 @@ class Hydra(nn.Module):
             new_controllers.append(tmp_ctrl)
             new_blocks.append(tmp_block)
         return new_controllers, new_blocks
+
+    def peel(self, task_ids, device=None):
+        """
+        Peels off a task-specific subnetwork (like a banana). Please note
+        that it does NOT copy the paremeters of the `__init__` of your
+        network, inherited from Hydra. Results of peel('task_a'):
+
+        | O |  (task_a)   (task_b)        | P |  (task_a)
+        | R |      |         |            | E |      |
+        | I |      +----+----+            | E |      +----+
+        | G |          (0)                | L |          (0)
+        | I |           |                 | E |           |
+        | N |          (*)                | D |          (*)
+
+        Args:
+          task_ids:  `str` or `list` of `str`, related subnets are peeled
+          device:    a device to spawn freshly peeled Hydra on
+
+        Returns:
+          A new Hydra that is only related to secified tasks.
+        """
+        execution_order, _ = self.execution_plan(task_ids)
+        index_map = dict((idx, i) for i, idx in enumerate(execution_order))
+
+        new_hydra = Hydra()
+        for index in execution_order:
+            controller = self.controllers[index]
+            block = self.blocks[index]
+
+            new_block = deepcopy(block)
+            if device is not None:
+                new_block = new_block.to(device)
+            if controller.task_id is not None:
+                new_hydra.add_head(new_block, controller.task_id)
+            else:
+                new_hydra.add_block(new_block)
+
+        for index in execution_order:
+            new_index = index_map[index]
+            controller = self.controllers[index]
+            new_controller = new_hydra.controllers[new_index]
+
+            parent_index = controller.parent_index
+            if parent_index is not None:
+                new_parent_index = index_map[parent_index]
+                new_parent = new_hydra.controllers[new_parent_index]
+                new_controller.stack_on(new_parent)
+
+        new_hydra.build()
+        return new_hydra
 
     def build(self):
         """
