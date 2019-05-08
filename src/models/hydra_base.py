@@ -270,7 +270,7 @@ class Hydra(nn.Module):
 
         return cloned_controller, cloned_block
 
-    def split(self, index, branching_scheme):
+    def split(self, index, branching_scheme, device):
         """
         Splits a Hydra's block into several blocks, according to the
         `branching_scheme`. Results of `split(0, [[1], [2,3], [4,5]])`:
@@ -285,6 +285,7 @@ class Hydra(nn.Module):
         Args:
           index:            index of the block to split
           branching_scheme: list of list of indices (as example above)
+          device:           a device to spawn the new branches on
 
         Raises:
           ValueError:       in case invalid parameters are specified
@@ -317,7 +318,7 @@ class Hydra(nn.Module):
 
         new_controllers, new_blocks = [controller], [block]
         for branch in branching_scheme[1:]:
-            tmp_ctrl, tmp_block = self.create_branch(index, branch)
+            tmp_ctrl, tmp_block = self.create_branch(index, branch, device)
             new_controllers.append(tmp_ctrl)
             new_blocks.append(tmp_block)
         return new_controllers, new_blocks
