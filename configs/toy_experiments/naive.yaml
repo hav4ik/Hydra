@@ -70,8 +70,5 @@ trainer:
   name: Naive
   kwargs:
     optimizers:
-      method: SGD
-      kwargs:
-        lr: 0.01
-        momentum: 0.9
-    patience: 7
+      method: Adam
+      kwargs: {}

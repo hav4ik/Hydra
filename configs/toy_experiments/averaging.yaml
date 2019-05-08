@@ -70,12 +70,9 @@ trainer:
   name: Averaging
   kwargs:
     optimizers:
-      method: SGD
-      kwargs:
-        lr: 0.01
-        momentum: 0.9
+      method: Adam
+      kwargs: {}
     loss_weights:
       mnist: 1.0
       fashion: 1.0
       kmnist: 1.0
-    patience: 7

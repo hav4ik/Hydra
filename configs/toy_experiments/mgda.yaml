@@ -72,5 +72,3 @@ trainer:
     optimizers:
       method: Adam
       kwargs: {}
-    patience: 7
-    mode: phase_2
