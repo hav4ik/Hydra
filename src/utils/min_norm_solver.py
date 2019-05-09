@@ -209,3 +209,72 @@ class MinNormSolver(nn.Module):
                 return sol_vec
             sol_vec = new_sol_vec
         return sol_vec
+
+
+class MinNormSolverFW(nn.Module):
+    """Wrapper over series of algorithms for solving min-norm tasks.
+    """
+    def __init__(self, n_tasks, max_iter=250, stop_crit=1e-6):
+        """Stuffs we don't want to re-define too much times
+        """
+        super().__init__()
+        self.n_tasks = n_tasks
+        n = torch.tensor(n_tasks)
+
+        self.MAX_ITER = max_iter
+        STOP_CRIT = torch.tensor(stop_crit)
+
+        grammian = torch.empty((n_tasks, n_tasks), dtype=torch.float32)
+        sol = torch.empty((n_tasks,), dtype=torch.float32)
+        new_sol = torch.empty((n_tasks,), dtype=torch.float32)
+
+        self.register_buffer('n', n)
+        self.register_buffer('STOP_CRIT', STOP_CRIT)
+        self.register_buffer('grammian', grammian)
+        self.register_buffer('sol', sol)
+        self.register_buffer('new_sol', new_sol)
+
+    @torch.no_grad()
+    def line_solver(self, v1v1, v1v2, v2v2):
+        """Analytical solution for the min-norm problem
+        """
+        if v1v2 >= v1v1:
+            return 0.999
+        if v1v2 >= v2v2:
+            return 0.001
+        return ((v2v2 - v1v2) / (v1v1+v2v2 - 2*v1v2))
+
+    @torch.no_grad()
+    def forward(self, vecs):
+        """Computes grammian matrix G_{i,j} = (<v_i, v_j>)_{i,j}.
+        """
+        if self.n_tasks == 1:
+            return vecs[0]
+        if self.n_tasks == 2:
+            v1v1 = torch.dot(vecs[0], vecs[0])
+            v1v2 = torch.dot(vecs[0], vecs[1])
+            v2v2 = torch.dot(vecs[1], vecs[1])
+            gamma = self.line_solver(v1v1, v1v2, v2v2)
+            return gamma * vecs[0] + (1. - gamma) * vecs[1]
+
+        self.sol.fill_(1. / self.n)
+        self.new_sol.copy_(self.sol)
+        torch.mm(vecs, vecs.t(), out=self.grammian)
+
+        for iter_count in range(self.MAX_ITER):
+            gram_dot_sol = torch.mv(self.grammian, self.sol)
+            t_iter = torch.argmin(gram_dot_sol)
+
+            v1v1 = torch.dot(self.sol, gram_dot_sol)
+            v1v2 = torch.dot(self.sol, self.grammian[:, t_iter])
+            v2v2 = self.grammian[t_iter, t_iter]
+
+            gamma = self.line_solver(v1v1, v1v2, v2v2)
+            self.new_sol *= gamma
+            self.new_sol[t_iter] += 1. - gamma
+
+            change = self.new_sol - self.sol
+            if torch.sum(torch.abs(change)) < self.STOP_CRIT:
+                return self.new_sol
+            self.sol.copy_(self.new_sol)
+        return self.sol
