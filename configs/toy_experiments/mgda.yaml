@@ -1,12 +1,14 @@
 # Experiment name and output dir
 experiment: mgda
 out_dir: ~/data/out
+saving_freq: 10
 
 # Multi-Task Ids, to be used when specifying:
 task_ids:
   - mnist
   - fashion
   - kmnist
+# - cifar
 
 # General configuration
 batch_size: 256
@@ -17,16 +19,41 @@ datasets:
     name: toy
     kwargs:
       dataset: MNIST
+      transforms:
+        - def: RandomAffine
+          kwargs:
+            degrees: 10
+            shear: 10
 
   - task_id: fashion
     name: toy
     kwargs:
       dataset: FashionMNIST
+      transforms:
+        - def: RandomAffine
+          kwargs:
+            degrees: 10
+            shear: 10
 
   - task_id: kmnist
     name: toy
     kwargs:
       dataset: KMNIST
+      transforms:
+        - def: RandomAffine
+          kwargs:
+            degrees: 20
+            shear: 20
+
+# - task_id: cifar
+#   name: toy
+#   kwargs:
+#     dataset: CIFAR10
+#     transforms:
+#       - def: RandomAffine
+#         kwargs:
+#           degrees: 10
+#           shear: 10
 
 # Models
 models:
@@ -43,6 +70,9 @@ models:
       - task_id: kmnist
         n_classes: 10
 
+#     - task_id: cifar
+#       n_classes: 10
+
 # Loss functions
 losses:
   - task_id: mnist
@@ -53,6 +83,9 @@ losses:
 
   - task_id: kmnist
     name: nll_loss
+
+# - task_id: cifar
+#   name: nll_loss
 
 # Evaluation metrics
 metrics:
@@ -65,10 +98,16 @@ metrics:
   - task_id: kmnist
     name: corrects
 
+# - task_id: cifar
+#   name: corrects
+
 # Trainer
 trainer:
   name: MGDA
   kwargs:
     optimizers:
-      method: Adam
-      kwargs: {}
+      method: SGD
+      kwargs:
+        lr: 0.001
+        momentum: 0.9
+        nesterov: true
