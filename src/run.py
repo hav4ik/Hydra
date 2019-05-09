@@ -7,7 +7,7 @@ from utils import losses as custom_losses
 from utils import metrics as custom_metrics
 import datasets
 import models
-import trainers
+from applications import trainers
 
 
 def import_data_loaders(config, n_workers, verbose=1):
