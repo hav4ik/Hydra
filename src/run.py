@@ -97,7 +97,11 @@ def run(config,
     starting_epoch = model_manager.last_epoch + 1
     for epoch in range(starting_epoch, starting_epoch + epochs):
         eval_losses, eval_metrics = trainer.run_epoch(epoch)
-        model_manager.save_model(model, eval_losses, epoch)
+
+        if 'saving_freq' in cfg:
+            if (epoch + 1) % cfg['saving_freq'] == 0:
+                model_manager.save_model(model, eval_losses, epoch)
+
         if trainer.early_stop():
             log_utils.print_early_stopping()
             break
