@@ -111,3 +111,7 @@ def print_arbitrary_info(name, s):
 
 def print_early_stopping():
     print(colored('\nSTOPPING EARLY', 'green'))
+
+
+def print_on_measure_begin():
+    print(colored('\nMEASURING', 'green'))

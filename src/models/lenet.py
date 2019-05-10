@@ -17,13 +17,13 @@ class LeHydra(Hydra):
         layer1 = nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(1, 20, 5)),
             ('relu', nn.ReLU()),
-            ('norm', nn.BatchNorm2D(20),
+            ('norm', nn.BatchNorm2d(20)),
             ('pool', nn.MaxPool2d(2))
         ]))
         layer2 = nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(20, 50, 5)),
             ('relu', nn.ReLU()),
-            ('norm', nn.BatchNorm2D(20),
+            ('norm', nn.BatchNorm2d(50)),
             ('pool', nn.MaxPool2d(2)),
         ]))
         layer3 = nn.Sequential(OrderedDict([

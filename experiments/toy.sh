@@ -74,28 +74,28 @@ python src/run.py \
     --epochs 120 \
     --workers 4 \
     --update "experiment: mgda" \
-    --update "trainer.mode: phase_2"
+    --update "trainer.kwargs.mode: phase_2"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 120 \
     --workers 4 \
     --update "experiment: mgda" \
-    --update "trainer.mode: phase_2"
+    --update "trainer.kwargs.mode: phase_2"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 120 \
     --workers 4 \
     --update "experiment: mgda" \
-    --update "trainer.mode: phase_2"
+    --update "trainer.kwargs.mode: phase_2"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 120 \
     --workers 4 \
     --update "experiment: mgda" \
-    --update "trainer.mode: phase_2"
+    --update "trainer.kwargs.mode: phase_2"
 
 
 #######################################
@@ -109,16 +109,16 @@ python src/run.py \
     --epochs 80 \
     --workers 4 \
     --update "experiment: mgda-norm" \
-    --update "trainer.mode: phase_1" \
-    --update "trainer.patience: 5"
+    --update "trainer.kwargs.mode: phase_1" \
+    --update "trainer.kwargs.patience: 10"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 40 \
     --workers 4 \
     --update "experiment: mgda-norm-000" \
-    --update "trainer.mode: phase_2" \
-    --update "trainer.normalize: null" \
+    --update "trainer.kwargs.mode: phase_2" \
+    --update "trainer.kwargs.normalize: null" \
     --resume
 
 
@@ -127,16 +127,16 @@ python src/run.py \
     --epochs 80 \
     --workers 4 \
     --update "experiment: mgda-norm" \
-    --update "trainer.mode: phase_1" \
-    --update "trainer.patience: 5"
+    --update "trainer.kwargs.mode: phase_1" \
+    --update "trainer.kwargs.patience: 10"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 40 \
     --workers 4 \
     --update "experiment: mgda-norm-001" \
-    --update "trainer.mode: phase_2" \
-    --update "trainer.normalize: null" \
+    --update "trainer.kwargs.mode: phase_2" \
+    --update "trainer.kwargs.normalize: null" \
     --resume
 
 
@@ -145,16 +145,16 @@ python src/run.py \
     --epochs 80 \
     --workers 4 \
     --update "experiment: mgda-norm" \
-    --update "trainer.mode: phase_1" \
-    --update "trainer.patience: 5"
+    --update "trainer.kwargs.mode: phase_1" \
+    --update "trainer.kwargs.patience: 10"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 40 \
     --workers 4 \
     --update "experiment: mgda-norm-002" \
-    --update "trainer.mode: phase_2" \
-    --update "trainer.normalize: null" \
+    --update "trainer.kwargs.mode: phase_2" \
+    --update "trainer.kwargs.normalize: null" \
     --resume
 
 
@@ -163,14 +163,14 @@ python src/run.py \
     --epochs 80 \
     --workers 4 \
     --update "experiment: mgda-norm" \
-    --update "trainer.mode: phase_1" \
-    --update "trainer.patience: 5"
+    --update "trainer.kwargs.mode: phase_1" \
+    --update "trainer.kwargs.patience: 10"
 
 python src/run.py \
     configs/toy_experiments/mgda.yaml \
     --epochs 40 \
     --workers 4 \
     --update "experiment: mgda-norm-003" \
-    --update "trainer.mode: phase_2" \
-    --update "trainer.normalize: null" \
+    --update "trainer.kwargs.mode: phase_2" \
+    --update "trainer.kwargs.normalize: null" \
     --resume

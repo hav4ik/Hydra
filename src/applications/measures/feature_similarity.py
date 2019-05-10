@@ -2,6 +2,8 @@ import sys
 from tqdm import tqdm
 import torch
 
+from utils import log_utils
+
 
 @torch.no_grad()
 def kullback_leibner(p, q, batch=False):
@@ -69,6 +71,7 @@ def feature_similarity(hydras,
     Returns:
       a list of measures for each of the request in measure_requests
     """
+    log_utils.print_on_measure_begin()
     measurements = [None for _ in range(len(measure_requests))]
     task_ids = loaders.keys()
     for hydra in hydras:
