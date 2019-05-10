@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import torch
 
-from .lenet import Lenet
+from .lenet import LeHydra
 
 
 class ModelManager:

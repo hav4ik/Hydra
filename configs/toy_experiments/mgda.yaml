@@ -8,7 +8,6 @@ task_ids:
   - mnist
   - fashion
   - kmnist
-# - cifar
 
 # General configuration
 batch_size: 256
@@ -45,19 +44,9 @@ datasets:
             degrees: 20
             shear: 20
 
-# - task_id: cifar
-#   name: toy
-#   kwargs:
-#     dataset: CIFAR10
-#     transforms:
-#       - def: RandomAffine
-#         kwargs:
-#           degrees: 10
-#           shear: 10
-
 # Models
 models:
-  name: Lenet
+  name: LeHydra
   weights: null
   kwargs:
     heads:
@@ -70,9 +59,6 @@ models:
       - task_id: kmnist
         n_classes: 10
 
-#     - task_id: cifar
-#       n_classes: 10
-
 # Loss functions
 losses:
   - task_id: mnist
@@ -83,9 +69,6 @@ losses:
 
   - task_id: kmnist
     name: nll_loss
-
-# - task_id: cifar
-#   name: nll_loss
 
 # Evaluation metrics
 metrics:
@@ -98,9 +81,6 @@ metrics:
   - task_id: kmnist
     name: corrects
 
-# - task_id: cifar
-#   name: corrects
-
 # Trainer
 trainer:
   name: MGDA
@@ -108,6 +88,6 @@ trainer:
     optimizers:
       method: SGD
       kwargs:
-        lr: 0.001
+        lr: 0.005
         momentum: 0.9
         nesterov: true

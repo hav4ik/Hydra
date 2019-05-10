@@ -9,7 +9,7 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 
-class Lenet(Hydra):
+class LeHydra(Hydra):
     def __init__(self, heads):
         super().__init__()
 
@@ -17,15 +17,17 @@ class Lenet(Hydra):
         layer1 = nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(1, 20, 5)),
             ('relu', nn.ReLU()),
+            ('norm', nn.BatchNorm2D(20),
             ('pool', nn.MaxPool2d(2))
         ]))
         layer2 = nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(20, 50, 5)),
             ('relu', nn.ReLU()),
+            ('norm', nn.BatchNorm2D(20),
             ('pool', nn.MaxPool2d(2)),
-            ('flatten', Flatten())
         ]))
         layer3 = nn.Sequential(OrderedDict([
+            ('flatten', Flatten()),
             ('fc', nn.Linear(4*4*50, 500)),
             ('relu', nn.ReLU())
         ]))

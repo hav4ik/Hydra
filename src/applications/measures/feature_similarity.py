@@ -79,7 +79,6 @@ def feature_similarity(hydras,
 
     for task_id in task_ids:
         loader = loaders[task_id]
-        exec_plans = []
         task_measurements = [None for _ in range(len(measure_requests))]
 
         for batch_idx, (data, target) in enumerate(loader):
