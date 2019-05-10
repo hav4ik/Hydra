@@ -392,14 +392,19 @@ class Hydra(nn.Module):
             self.execution_plan(list(self.heads.keys()))
 
     def forward(self,
-                input_tensor, task_ids, retain_tensors=False):
+                input_tensor,
+                task_ids,
+                retain_tensors=False,
+                retain_all=False):
         """
         Defines the computation performed at every call. Dynamically
         and automatically decides what to run and in what order.
 
         Args:
-          input_tensor:  a common input for specified tasks
-          task_ids:      identifiers of tasks to be executed
+          input_tensor:    a common input for specified tasks
+          task_ids:        identifiers of tasks to be executed
+          retain_tensors:  if True, save branching tensors to rep_tensors
+          retain_all:      if True, save ALL tensors at rep_tensors
 
         Returns:
           A dictionary {task_id: output} of task-specific outputs
@@ -414,10 +419,14 @@ class Hydra(nn.Module):
                 x = self.blocks[index](x)
             else:
                 x = self.blocks[index](self.rep_tensors[parent_index])
-            if index in branching_ids:
+
+            if retain_all:
                 self.rep_tensors[index] = x
-            if retain_tensors and index in self.branching_points:
+            elif retain_tensors and index in self.branching_points:
                 self.rep_tensors[index] = x
+            elif index in branching_ids:
+                self.rep_tensors[index] = x
+
             if controller.task_id is not None:
                 outputs[controller.task_id] = x
 
