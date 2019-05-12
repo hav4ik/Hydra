@@ -14,8 +14,8 @@ class MGDA(BaseTrainer):
                  losses,
                  metrics,
                  train_loaders,
-                 optimizers,
-                 test_loaders,
+                 optimizers=None,
+                 test_loaders=None,
                  model_manager=None,
                  tensorboard_writer=None,
                  mode='phase_2',
@@ -31,6 +31,14 @@ class MGDA(BaseTrainer):
                          model_manager=model_manager,
                          tensorboard_writer=tensorboard_writer,
                          patience=patience)
+
+        if optimizers is None:
+            optimizers = {
+                    'method': 'SGD',
+                    'kwargs': {
+                        'lr': 0.001,
+                        'momentum': 0.9,
+                        'nesterov': True}}
 
         # Load Optimizers
         optimizer_def = getattr(optim, optimizers['method'])

@@ -13,7 +13,7 @@ class Averaging(BaseTrainer):
                  losses,
                  metrics,
                  train_loaders,
-                 optimizers,
+                 optimizers=None,
                  test_loaders=None,
                  model_manager=None,
                  tensorboard_writer=None,
@@ -30,6 +30,14 @@ class Averaging(BaseTrainer):
                          model_manager=model_manager,
                          tensorboard_writer=tensorboard_writer,
                          patience=patience)
+
+        if optimizers is None:
+            optimizers = {
+                    'method': 'SGD',
+                    'kwargs': {
+                        'lr': 0.001,
+                        'momentum': 0.9,
+                        'nesterov': True}}
 
         self.slimming = slimming
         optimizer_def = getattr(optim, optimizers['method'])

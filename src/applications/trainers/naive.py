@@ -14,7 +14,7 @@ class Naive(BaseTrainer):
                  losses,
                  metrics,
                  train_loaders,
-                 optimizers,
+                 optimizers=None,
                  model_manager=None,
                  test_loaders=None,
                  tensorboard_writer=None,
@@ -32,6 +32,13 @@ class Naive(BaseTrainer):
                          patience=patience)
 
         self.slimming = slimming
+        if optimizers is None:
+            optimizers = {
+                    'method': 'SGD',
+                    'kwargs': {
+                        'lr': 0.001,
+                        'momentum': 0.9,
+                        'nesterov': True}}
         optimizer_def = getattr(optim, optimizers['method'])
         optimizers_dict = dict()
         for task_id in self.task_ids:
