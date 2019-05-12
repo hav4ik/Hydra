@@ -24,20 +24,18 @@ class BaseTrainer:
     def __init__(self,
                  device,
                  model,
-                 model_manager,
-                 task_ids,
                  losses,
                  metrics,
                  train_loaders,
-                 test_loaders,
-                 tensorboard_writer,
+                 test_loaders=None,
+                 model_manager=None,
+                 tensorboard_writer=None,
                  patience=None,
                  **kwargs):
 
         self.device = device
         self.model = model
         self.model_manager = model_manager
-        self.task_ids = task_ids
         self.losses = losses
         self.metrics = metrics
         self.train_loaders = train_loaders
@@ -48,9 +46,20 @@ class BaseTrainer:
         self.best_score = None
         self.counter = 0
 
+        assert set(self.model.heads.keys()) <= set(losses.keys())
+        assert set(self.model.heads.keys()) <= set(metrics.keys())
+        assert set(self.model.heads.keys()) <= set(train_loaders.keys())
+        if test_loaders is not None:
+            assert set(self.model.heads.keys()) <= set(test_loaders.keys())
+
+        self.task_ids = list(self.model.heads.keys())
+
     def eval_epoch(self):
         """Evaluates `self.model` for one epoch over test `self.test_loaders`
         """
+        if self.test_loaders is None:
+            raise ValueError('test_loaders not specified, cannot evaluate')
+
         self.model.eval()
         total_batches = sum([len(loader)
                             for _, loader in self.test_loaders.items()])
@@ -84,25 +93,27 @@ class BaseTrainer:
         log_utils.print_on_epoch_begin(epoch, self.counter)
 
         train_losses, train_metrics = self.train_epoch()
-        eval_losses, eval_metrics = self.eval_epoch()
+        if self.test_loaders is not None:
+            eval_losses, eval_metrics = self.eval_epoch()
 
-        log_utils.print_eval_info(
-                train_losses, train_metrics,
-                eval_losses, eval_metrics)
+            log_utils.print_eval_info(
+                    train_losses, train_metrics,
+                    eval_losses, eval_metrics)
 
-        for task_id in self.task_ids:
-            self.tensorboard_writer.add_scalar(
-                    '{}/train/loss'.format(task_id),
-                    train_losses[task_id], epoch)
-            self.tensorboard_writer.add_scalar(
-                    '{}/train/metric'.format(task_id),
-                    train_metrics[task_id], epoch)
-            self.tensorboard_writer.add_scalar(
-                    '{}/val/loss'.format(task_id),
-                    eval_losses[task_id], epoch)
-            self.tensorboard_writer.add_scalar(
-                    '{}/val/metric'.format(task_id),
-                    eval_metrics[task_id], epoch)
+        if self.tensorboard_writer is not None:
+            for task_id in self.task_ids:
+                self.tensorboard_writer.add_scalar(
+                        '{}/train/loss'.format(task_id),
+                        train_losses[task_id], epoch)
+                self.tensorboard_writer.add_scalar(
+                        '{}/train/metric'.format(task_id),
+                        train_metrics[task_id], epoch)
+                self.tensorboard_writer.add_scalar(
+                        '{}/val/loss'.format(task_id),
+                        eval_losses[task_id], epoch)
+                self.tensorboard_writer.add_scalar(
+                        '{}/val/metric'.format(task_id),
+                        eval_metrics[task_id], epoch)
 
         if self.patience is not None:
             if self.best_score is None:

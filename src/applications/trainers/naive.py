@@ -11,25 +11,30 @@ class Naive(BaseTrainer):
     def __init__(self,
                  device,
                  model,
-                 model_manager,
-                 task_ids,
                  losses,
                  metrics,
                  train_loaders,
-                 test_loaders,
-                 tensorboard_writer,
                  optimizers,
+                 model_manager=None,
+                 test_loaders=None,
+                 tensorboard_writer=None,
                  slimming=None,
                  patience=None):
 
-        super().__init__(
-                device, model, model_manager, task_ids, losses, metrics,
-                train_loaders, test_loaders, tensorboard_writer, patience)
+        super().__init__(device=device,
+                         model=model,
+                         losses=losses,
+                         metrics=metrics,
+                         train_loaders=train_loaders,
+                         test_loaders=test_loaders,
+                         model_manager=model_manager,
+                         tensorboard_writer=tensorboard_writer,
+                         patience=patience)
 
         self.slimming = slimming
         optimizer_def = getattr(optim, optimizers['method'])
         optimizers_dict = dict()
-        for task_id in task_ids:
+        for task_id in self.task_ids:
             task_params = list(model.parameters(task_id))
             optimizers_dict[task_id] = optimizer_def(
                     task_params, **optimizers['kwargs'])
@@ -42,6 +47,8 @@ class Naive(BaseTrainer):
                 [(self.task_ids[i], i) for i in range(len(self.task_ids))])
         task_queue = None
         for task_id, loader in self.train_loaders.items():
+            if task_id not in self.task_ids:
+                continue
             idx = reverse_ids[task_id]
             if task_queue is None:
                 task_queue = np.ones((len(loader),), dtype=int) * idx

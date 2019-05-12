@@ -85,12 +85,11 @@ def run(config,
     trainer_def = trainers.load_trainer(cfg['trainer']['name'])
     trainer = trainer_def(device=device,
                           model=model,
-                          model_manager=model_manager,
-                          task_ids=cfg['task_ids'],
                           losses=losses,
                           metrics=metrics,
                           train_loaders=train_loaders,
                           test_loaders=test_loaders,
+                          model_manager=model_manager,
                           tensorboard_writer=tensorboard_writer,
                           **cfg['trainer']['kwargs'])
 

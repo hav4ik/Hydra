@@ -10,26 +10,36 @@ class Averaging(BaseTrainer):
     def __init__(self,
                  device,
                  model,
-                 model_manager,
-                 task_ids,
                  losses,
                  metrics,
                  train_loaders,
-                 test_loaders,
-                 tensorboard_writer,
                  optimizers,
-                 loss_weights,
+                 test_loaders=None,
+                 model_manager=None,
+                 tensorboard_writer=None,
+                 loss_weights=None,
                  slimming=None,
                  patience=None):
 
-        super().__init__(
-                device, model, model_manager, task_ids, losses, metrics,
-                train_loaders, test_loaders, tensorboard_writer, patience)
+        super().__init__(device=device,
+                         model=model,
+                         losses=losses,
+                         metrics=metrics,
+                         train_loaders=train_loaders,
+                         test_loaders=test_loaders,
+                         model_manager=model_manager,
+                         tensorboard_writer=tensorboard_writer,
+                         patience=patience)
 
         self.slimming = slimming
         optimizer_def = getattr(optim, optimizers['method'])
         self.optimizers = optimizer_def(
                 model.parameters(), **optimizers['kwargs'])
+
+        if loss_weights is None:
+            loss_weights = dict(zip(
+                self.task_ids, [1.] * len(self.task_ids)))
+
         self.loss_weights = dict(
                 (k, torch.tensor(v, device=device))
                 for k, v in loss_weights.items())

@@ -11,21 +11,26 @@ class MGDA(BaseTrainer):
     def __init__(self,
                  device,
                  model,
-                 model_manager,
-                 task_ids,
                  losses,
                  metrics,
                  train_loaders,
-                 test_loaders,
-                 tensorboard_writer,
                  optimizers,
+                 test_loaders,
+                 model_manager=None,
+                 tensorboard_writer=None,
                  mode='phase_2',
                  normalize='loss+',
                  patience=None):
 
-        super().__init__(
-                device, model, model_manager, task_ids, losses, metrics,
-                train_loaders, test_loaders, tensorboard_writer, patience)
+        super().__init__(device=device,
+                         model=model,
+                         losses=losses,
+                         metrics=metrics,
+                         train_loaders=train_loaders,
+                         test_loaders=test_loaders,
+                         model_manager=model_manager,
+                         tensorboard_writer=tensorboard_writer,
+                         patience=patience)
 
         # Load Optimizers
         optimizer_def = getattr(optim, optimizers['method'])
