@@ -54,6 +54,38 @@ class Controller:
         return self
 
 
+class Block(nn.Module):
+    """
+    A wrapper around `nn.Module` that holds convenient parameters for the
+    Hydra class, which otherwise would be hard to access or require.
+
+    Attributes:
+      module:           an `nn.Module` that we will wrap this around
+      with_bn_pillow:   whether to put a batch-normalization layer after
+      bn_pillow:        the batchnorm layer mentioned, created in runtime
+    """
+    def __init__(self, module, with_bn_pillow=True):
+        super().__init__()
+        self.add_module('module', module)
+        self.with_bn_pillow = with_bn_pillow
+
+    def forward(self, x, *args, **kwargs):
+        y = self.module.forward(x, *args, **kwargs)
+        if self.with_bn_pillow:
+            if not hasattr(self, 'bn_pillow'):
+                channels = y.shape[1]
+                if len(y.shape) == 3:
+                    self.add_module('bn_pillow', nn.BatchNorm1d(channels))
+                elif len(y.shape) == 4:
+                    self.add_module('bn_pillow', nn.BatchNorm2d(channels))
+                else:
+                    raise RuntimeError('Only 3D and 4D tensors are supported')
+                device = next(self.module.parameters()).device
+                self.bn_pillow.to(device)
+            return self.bn_pillow.forward(y)
+        return y
+
+
 class Hydra(nn.Module):
     """
     A base class for all Multi-Task Neural Networks with hard-shared
