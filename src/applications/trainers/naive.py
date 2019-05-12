@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 
 from .base_trainer import BaseTrainer
+from utils.regularizers import slimming_loss
 
 
 class Naive(BaseTrainer):
@@ -18,12 +19,14 @@ class Naive(BaseTrainer):
                  test_loaders,
                  tensorboard_writer,
                  optimizers,
+                 slimming=None,
                  patience=None):
 
         super().__init__(
                 device, model, model_manager, task_ids, losses, metrics,
                 train_loaders, test_loaders, tensorboard_writer, patience)
 
+        self.slimming = slimming
         optimizer_def = getattr(optim, optimizers['method'])
         optimizers_dict = dict()
         for task_id in task_ids:
@@ -69,6 +72,8 @@ class Naive(BaseTrainer):
             self.optimizers[task_id].zero_grad()
             output = self.model(data, task_id)
             loss = self.losses[task_id](output, target)
+            if self.slimming is not None:
+                loss = loss + self.slimming * slimming_loss(self.model)
             loss.backward()
             self.optimizers[task_id].step()
 

@@ -3,6 +3,7 @@ import torch
 import torch.optim as optim
 
 from .base_trainer import BaseTrainer
+from utils.regularizers import slimming_loss
 
 
 class Averaging(BaseTrainer):
@@ -18,12 +19,14 @@ class Averaging(BaseTrainer):
                  tensorboard_writer,
                  optimizers,
                  loss_weights,
+                 slimming=None,
                  patience=None):
 
         super().__init__(
                 device, model, model_manager, task_ids, losses, metrics,
                 train_loaders, test_loaders, tensorboard_writer, patience)
 
+        self.slimming = slimming
         optimizer_def = getattr(optim, optimizers['method'])
         self.optimizers = optimizer_def(
                 model.parameters(), **optimizers['kwargs'])
@@ -68,6 +71,12 @@ class Averaging(BaseTrainer):
                     train_losses_ts[task_id] += loss.sum()
                     train_metrics_ts[task_id] += \
                         self.metrics[task_id](output, target)
+
+            # network slimming
+            if self.slimming is not None:
+                slim_loss = self.slimming * slimming_loss(self.model)
+                if slim_loss > 1e-5:
+                    slim_loss.backward()
 
             # averaging out body gradients and optimize the body
             for idx, (_, block) in enumerate(self.model.control_blocks()):
