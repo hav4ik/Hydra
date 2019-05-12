@@ -63,11 +63,13 @@ class Block(nn.Module):
       module:           an `nn.Module` that we will wrap this around
       with_bn_pillow:   whether to put a batch-normalization layer after
       bn_pillow:        the batchnorm layer mentioned, created in runtime
+      trainable:        whether the blocks is trainable
     """
     def __init__(self, module, with_bn_pillow=True):
         super().__init__()
         self.add_module('module', module)
         self.with_bn_pillow = with_bn_pillow
+        self.trainable = True
 
     def forward(self, x, *args, **kwargs):
         y = self.module.forward(x, *args, **kwargs)
@@ -182,25 +184,37 @@ class Hydra(nn.Module):
                 branching_ids.add(branching_point)
         return execution_order, branching_ids
 
-    def parameters(self, recurse=True, task_ids=None):
+    def parameters(self,
+                   recurse=True,
+                   task_ids=None,
+                   only_trainable=False):
         """
         Returns an iterator over module parameters. If task_ids
         are specified, returns an iterator only over the parameters
         that affects the outputs on those tasks.
 
         Args:
-          recurse:  whether to yield the parameters of submodules
-          task_ids: whether to yield only task-related parameters
+          recurse:         whether to yield the parameters of submodules
+          task_ids:        whether to yield only task-related parameters
+          only_trainable:  whether to yield only trainable parameters
 
         Yields:
           Parameter: module parameter
         """
-        if task_ids is None:
+        if task_ids is None and not only_trainable:
             for param in super().parameters(recurse):
                 yield param
         else:
+            if task_ids is None:
+                task_ids = list(self.heads.keys())
             execution_order, _ = self.execution_plan(task_ids)
             for index in execution_order:
+                if only_trainable:
+                    if not hasattr(self.blocks[index], 'trainable'):
+                        continue
+                    if self.blocks[index].trainable is not True:
+                        continue
+
                 for param in self.blocks[index].parameters():
                     yield param
 
