@@ -63,7 +63,7 @@ class Block(nn.Module):
       module:           an `nn.Module` that we will wrap this around
       with_bn_pillow:   whether to put a batch-normalization layer after
       bn_pillow:        the batchnorm layer mentioned, created in runtime
-      trainable:        whether the blocks is trainable
+      trainable:        DO NOT confuse with nn.Module.training (module state)
     """
     def __init__(self, module, with_bn_pillow=True):
         super().__init__()
@@ -77,13 +77,18 @@ class Block(nn.Module):
             if not hasattr(self, 'bn_pillow'):
                 channels = y.shape[1]
                 if len(y.shape) == 3:
-                    self.add_module('bn_pillow', nn.BatchNorm1d(channels))
+                    bn_pillow = nn.BatchNorm1d(channels)
                 elif len(y.shape) == 4:
-                    self.add_module('bn_pillow', nn.BatchNorm2d(channels))
+                    bn_pillow = nn.BatchNorm2d(channels)
                 else:
                     raise RuntimeError('Only 3D and 4D tensors are supported')
                 device = next(self.module.parameters()).device
-                self.bn_pillow.to(device)
+                bn_pillow = bn_pillow.to(device)
+                self.add_module('bn_pillow', bn_pillow)
+                if self.training:
+                    self.bn_pillow.train()
+                else:
+                    self.bn_pillow.eval()
             return self.bn_pillow.forward(y)
         return y
 

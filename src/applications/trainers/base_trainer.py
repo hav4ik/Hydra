@@ -53,6 +53,27 @@ class BaseTrainer:
             assert set(self.model.heads.keys()) <= set(test_loaders.keys())
 
         self.task_ids = list(self.model.heads.keys())
+        self.warmup()
+
+    def warmup(self):
+        """
+        Warms the Hydra up. This is needed because some of the Hydra's
+        parameters are created "on-the-fly", and there is unfortunately no
+        way to initialize them directly.
+        """
+        self.model.train()
+        for task_id in self.task_ids:
+            for data, target in self.train_loaders[task_id]:
+                data, target = data.to(self.device), target.to(self.device)
+                output = self.model(data, task_id)
+                break
+
+        self.model.eval()
+        for task_id in self.task_ids:
+            for data, target in self.train_loaders[task_id]:
+                data, target = data.to(self.device), target.to(self.device)
+                output = self.model(data, task_id)
+                break
 
     def eval_epoch(self):
         """Evaluates `self.model` for one epoch over test `self.test_loaders`
