@@ -391,7 +391,8 @@ class Hydra(nn.Module):
           device:    a device to spawn freshly peeled Hydra on
 
         Returns:
-          A new Hydra that is only related to secified tasks.
+          peeled_hydra: A new Hydra that is only related to secified tasks.
+          index_map:    a dict {old_index: new_index} of block correspondence
         """
         execution_order, _ = self.execution_plan(task_ids)
         index_map = dict((idx, i) for i, idx in enumerate(execution_order))
@@ -421,7 +422,7 @@ class Hydra(nn.Module):
                 new_controller.stack_on(new_parent)
 
         new_hydra.build()
-        return new_hydra
+        return new_hydra, index_map
 
     def build(self):
         """
