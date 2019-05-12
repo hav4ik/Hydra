@@ -54,6 +54,40 @@ class Controller:
         return self
 
 
+class BatchNormPillow(nn.Module):
+    """
+    Customized Batch Normalization, for which we can access the inner
+    representation (pre-affine).
+
+    Attributes:
+      raw_bn:       an instance of `nn.BatchNorm_`, with `affine=False`
+      gamma, beta:  gamma and beta coefficients (learnable)
+      rep:          inner representation (saved if retain_rep is True)
+      retain_rep:   whether to retain the result of raw_bn
+    """
+    def __init__(self, shape):
+        super().__init__()
+        channels = shape[1]
+        if len(shape) == 3:
+            self.raw_bn = nn.BatchNorm1d(channels, affine=False)
+        elif len(shape) == 4:
+            self.raw_bn = nn.BatchNorm2d(channels, affine=False)
+        else:
+            raise RuntimeError('Only 3D and 4D tensors are supported')
+
+        self.gamma = nn.Parameter(torch.empty((channels,)).uniform_())
+        self.beta = nn.Parameter(torch.zeros((channels,)))
+        self.rep = None
+        self.retain_rep = False
+
+    def forward(self, x):
+        x = self.raw_bn(x)
+        if self.retain_rep:
+            self.rep = x
+        y = torch.transpose(x, 1, -1) * self.gamma + self.beta
+        return torch.transpose(y, 1, -1)
+
+
 class Block(nn.Module):
     """
     A wrapper around `nn.Module` that holds convenient parameters for the
@@ -75,13 +109,7 @@ class Block(nn.Module):
         y = self.module.forward(x, *args, **kwargs)
         if self.with_bn_pillow:
             if not hasattr(self, 'bn_pillow'):
-                channels = y.shape[1]
-                if len(y.shape) == 3:
-                    bn_pillow = nn.BatchNorm1d(channels)
-                elif len(y.shape) == 4:
-                    bn_pillow = nn.BatchNorm2d(channels)
-                else:
-                    raise RuntimeError('Only 3D and 4D tensors are supported')
+                bn_pillow = BatchNormPillow(y.shape)
                 device = next(self.module.parameters()).device
                 bn_pillow = bn_pillow.to(device)
                 self.add_module('bn_pillow', bn_pillow)
