@@ -31,7 +31,7 @@ def inter_stress(hydras,
     """
     similarity_measure = feature_similarity(
             hydras, measure_requests, loaders, device)
-    inter_stress_measure = [None for _ in range(len(measure_requests))]
+    inter_stress_measures = [None for _ in range(len(measure_requests))]
 
     for request_id, request in enumerate(measure_requests):
         hydra_i, hydra_j = hydras[request[0]], hydras[request[1]]
@@ -44,8 +44,8 @@ def inter_stress(hydras,
         else:
             if not hasattr(hydra_i.blocks[rep_id_i], 'bn_pillow'):
                 raise RuntimeError('The bn_pillow is not yet initialized')
-            gamma_i = hydra_i.blocks[rep_id_i].bn_pillow.weight
-        gamma_i /= gamma_i.sum()
+            gamma_i = torch.abs(hydra_i.blocks[rep_id_i].bn_pillow.weight)
+        gamma_i = gamma_i / torch.sum(gamma_i)
 
         # Feature importance for j-th hydra at feature map rep_id_j
         if not hydra_j.blocks[rep_id_j].with_bn_pillow:
@@ -54,12 +54,12 @@ def inter_stress(hydras,
         else:
             if not hasattr(hydra_j.blocks[rep_id_j], 'bn_pillow'):
                 raise RuntimeError('The bn_pillow is not yet initialized')
-            gamma_j = hydra_j.blocks[rep_id_j].bn_pillow.weight
-        gamma_j /= gamma_j.sum()
+            gamma_j = torch.abs(hydra_j.blocks[rep_id_j].bn_pillow.weight)
+        gamma_j = gamma_j / torch.sum(gamma_j)
 
         # Now we have feature importance gamma_i and gamma_j that sums up
-        # to 1; we also have per-channel feature similarities.
-        inter_stress_measure[request_id] = \
+        # to 1; we also have per-channel feature similarities (JSD).
+        inter_stress_measures[request_id] = \
             torch.sum((gamma_i + gamma_j) * similarity_measure[request_id])
 
-    return inter_stress_measure
+    return inter_stress_measures

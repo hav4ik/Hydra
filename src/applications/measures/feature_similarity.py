@@ -77,6 +77,14 @@ def feature_similarity(hydras,
     for hydra in hydras:
         hydra.eval()
 
+    # set BatchNorm Pillows to retain representations (need to unset later)
+    # TODO: make this shit prettier!!! I'm so tired of this!!!
+    # Aaaaalso, this will ONLY work if you do `BaseTrainer.warmup` first :')
+    for hydra in hydras:
+        for block in hydra.blocks:
+            if hasattr(block, 'bn_pillow'):
+                block.bn_pillow.retain_rep = True
+
     total_batches = sum([len(loader) for _, loader in loaders.items()])
     pbar = tqdm(desc='  eval ', total=total_batches, ascii=True)
 
@@ -102,8 +110,27 @@ def feature_similarity(hydras,
                     raise ValueError('matching_ids should contain valid '
                                      'indices of hydra''s rep_tensors.')
 
-                rep_i = hydra_i.rep_tensors[repid_i]
-                rep_j = hydra_j.rep_tensors[repid_j]
+                # OH YEAH LOOK AT THIS UGLINESS OMG OMG OMG
+                # TODO: make this prettier somehow
+
+                if repid_i >= len(hydra_i.blocks) \
+                        or repid_j >= len(hydra_j.blocks):
+                    raise ValueError('matching_ids should contain valid '
+                                     'indices of hydra''s blocks.')
+
+                block_i = hydra_i.blocks[repid_i]
+                block_j = hydra_j.blocks[repid_j]
+                if not hasattr(block_i, 'bn_pillow') \
+                        or not hasattr(block_j, 'bn_pillow'):
+                    raise ValueError('matching_ids should only contain '
+                                     'blocks with bn_pillow.')
+
+                rep_i = block_i.bn_pillow.rep
+                rep_j = block_j.bn_pillow.rep
+
+                # PHEW, THIS UGLY STUFF IS OVER...
+                # TODO: but seriously, we need to fix it!
+
                 if not rep_i.shape == rep_j.shape:
                     raise ValueError(
                             "Representation tensor's shapes should be "
@@ -140,5 +167,13 @@ def feature_similarity(hydras,
                     measurements[buf_id] = task_measurements[buf_id]
                 else:
                     measurements[buf_id] += task_measurements[buf_id]
+
+    # unset BatchNorm Pillows (don't want to retain represnetations anymore)
+    # TODO: make this shit prettier!!! I'm so tired of this!!!
+    # Aaaaalso, this will ONLY work if you do `BaseTrainer.warmup` first :')
+    for hydra in hydras:
+        for block in hydra.blocks:
+            if hasattr(block, 'bn_pillow'):
+                block.bn_pillow.retain_rep = False
 
     return measurements

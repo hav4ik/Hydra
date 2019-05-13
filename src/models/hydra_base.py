@@ -61,7 +61,7 @@ class BatchNormPillow(nn.Module):
 
     Attributes:
       raw_bn:       an instance of `nn.BatchNorm_`, with `affine=False`
-      gamma, beta:  gamma and beta coefficients (learnable)
+      weight, bias: gamma and beta coefficients (learnable)
       rep:          inner representation (saved if retain_rep is True)
       retain_rep:   whether to retain the result of raw_bn
     """
@@ -75,8 +75,8 @@ class BatchNormPillow(nn.Module):
         else:
             raise RuntimeError('Only 3D and 4D tensors are supported')
 
-        self.gamma = nn.Parameter(torch.empty((channels,)).uniform_())
-        self.beta = nn.Parameter(torch.zeros((channels,)))
+        self.weight = nn.Parameter(torch.empty((channels,)).uniform_())
+        self.bias = nn.Parameter(torch.zeros((channels,)))
         self.rep = None
         self.retain_rep = False
 
@@ -84,7 +84,7 @@ class BatchNormPillow(nn.Module):
         x = self.raw_bn(x)
         if self.retain_rep:
             self.rep = x
-        y = torch.transpose(x, 1, -1) * self.gamma + self.beta
+        y = torch.transpose(x, 1, -1) * self.weight + self.bias
         return torch.transpose(y, 1, -1)
 
 
