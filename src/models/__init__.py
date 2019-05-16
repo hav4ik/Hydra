@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 
 from .lenet import LeHydra
+from .resnet import PreActResNet18
 
 
 class ModelManager:
