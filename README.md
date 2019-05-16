@@ -12,7 +12,6 @@
 * **Naive** &mdash; a separate optimizer for each task
 * **Gradients averaging** &mdash; average out the gradients to the network's body
 * **MGDA** &mdash; described in the paper [Multi-Task Learning as Multi-Objective Optimization (NIPS 2018)][mgda]
-* **Lazy MGDA** &mdash; train the network by normalizing gradients until *Early Stopping*&thinsp;, then turn on MGDA at the end. This works as good as MGDA, for obvious reasons.
 
 A comprehensive survey on these algorithms (and more) can be found in [this blog article][blog-post].
 
