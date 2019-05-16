@@ -20,27 +20,22 @@ class LeHydra(Hydra):
             ('conv', nn.Conv2d(1, 20, 5)),
             ('relu', nn.ReLU()),
             ('pool', nn.MaxPool2d(2))
-        ])), with_bn_pillow=False)
+        ])), with_bn_pillow=True)
         layer2 = Block(nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(20, 50, 5)),
             ('relu', nn.ReLU()),
             ('pool', nn.MaxPool2d(2)),
-        ])), with_bn_pillow=False)
-        layer3 = Block(nn.Sequential(OrderedDict([
-            ('flatten', Flatten()),
-            ('fc', nn.Linear(4*4*50, 500)),
-            ('relu', nn.ReLU())
-        ])), with_bn_pillow=False)
+        ])), with_bn_pillow=True)
 
         # Register body layers and stack them
         x = self.add_block(layer1)
         x = self.add_block(layer2).stack_on(x)
-        x = self.add_block(layer3).stack_on(x)
 
         # Head constructor
         def define_head(n_classes):
             return Block(nn.Sequential(OrderedDict([
-                    ('fc', nn.Linear(500, n_classes)),
+                    ('flatten', Flatten()),
+                    ('fc', nn.Linear(4*4*50, n_classes)),
                     ('softmax', nn.LogSoftmax(dim=1))])),
                 with_bn_pillow=False)
 
