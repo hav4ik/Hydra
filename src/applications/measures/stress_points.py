@@ -53,7 +53,9 @@ def stress_points(hydra, losses, metrics, loaders, device):
       device:    device to do training on
 
     Returns:
-      a dict {branch_index: tensor} of stress values of the Hydra's block
+      inner_stress: a dict {branch_index: tensor} of branches stress values
+      outer_stress: a dict of lists of tuples of outer measurements info:
+                    {branch_index: [(task_id_i, task_id_j, stress_value)]}
     """
     peeled_hydras = split_tuning(hydra, losses, metrics, loaders, device)
     hydras = list(h for _, (h, _) in peeled_hydras.items())
@@ -64,6 +66,7 @@ def stress_points(hydra, losses, metrics, loaders, device):
     hydras.append(hydra)
     this_idx = len(hydras) - 1
 
+    # Measurements for stress inside each branching point
     for branching_index in hydra.branching_points:
         for idx in range(len(peeled_hydras)):
             index_map = index_maps[idx]
@@ -74,15 +77,55 @@ def stress_points(hydra, losses, metrics, loaders, device):
             rep_id_i, rep_id_j = branching_index, index_map[branching_index]
             measure_requests.append((i, j, rep_id_i, rep_id_j, task_id))
 
-    inter_stress_measures = inter_stress(
+    # Now, the measurements for stress inside branches lies in the slice
+    # measure_requests[:inter_request_len]
+    innerstress_request_len = len(measure_requests)
+
+    # Measurements of difference between each of the peeled hydras
+    outer_stress = dict((k, []) for k in hydra.branching_points)
+    for branching_index in hydra.branching_points:
+
+        for idx_i in range(len(peeled_hydras)):
+            index_map_i = index_maps[idx_i]
+            task_id_i = task_ids[idx_i]
+            if branching_index not in index_map_i:
+                continue
+            rep_id_i = index_map_i[branching_index]
+
+            for idx_j in range(idx_i + 1, len(peeled_hydras)):
+                index_map_j = index_maps[idx_j]
+                task_id_j = task_ids[idx_j]
+                if branching_index not in index_map_j:
+                    continue
+                rep_id_j = index_map_j[branching_index]
+
+                # TODO: make this thing less ugly. We don't want to track
+                # the tasks, we want to work ONLY with children indices.
+                outer_stress[branching_index].append(
+                        (task_id_i, task_id_j, len(measure_requests)))
+                outer_stress[branching_index].append(
+                        (task_id_j, task_id_i, len(measure_requests)))
+                measure_requests.append(
+                        (idx_i, idx_j, rep_id_i, rep_id_j, None))
+
+    # The moment of truth...
+    stress_measures = inter_stress(
             hydras, measure_requests, loaders, device)
 
+    # Calculating inner stress of each branch
     with torch.no_grad():
-        branching_stress = dict(
+        inner_stress = dict(
                 (k, torch.tensor(0., device=device))
                 for k in hydra.branching_points)
-        for idx in range(len(inter_stress_measures)):
+        for idx in range(innerstress_request_len):
             rep_id_i = measure_requests[idx][2]
-            branching_stress[rep_id_i] += inter_stress_measures[idx]
+            inner_stress[rep_id_i] += stress_measures[idx]
 
-    return branching_stress
+    # Gathering the stresses between each subnetworks
+    for k, v in outer_stress.items():
+        for i in range(len(v)):
+            task_id_i, task_id_j, idx = v[i]
+            v[i] = (task_id_i, task_id_j, stress_measures[idx])
+
+    del peeled_hydras
+    return inner_stress, outer_stress
