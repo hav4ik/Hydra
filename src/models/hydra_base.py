@@ -66,15 +66,14 @@ class BatchNormPillow(nn.Module):
       rep:          inner representation (saved if retain_rep is True)
       retain_rep:   whether to retain the result of raw_bn
     """
-    def __init__(self, shape):
+    def __init__(self, channels, bn_type='2d'):
         super().__init__()
-        channels = shape[1]
-        if len(shape) == 3:
+        if bn_type == '1d':
             self.raw_bn = nn.BatchNorm1d(channels, affine=False)
-        elif len(shape) == 4:
+        elif bn_type == '2d':
             self.raw_bn = nn.BatchNorm2d(channels, affine=False)
         else:
-            raise RuntimeError('Only 3D and 4D tensors are supported')
+            raise RuntimeError('Only 1D and 2D BN-Pillow are supported')
 
         self.weight = nn.Parameter(torch.empty((channels,)).uniform_())
         self.bias = nn.Parameter(torch.zeros((channels,)))
@@ -100,17 +99,26 @@ class Block(nn.Module):
       bn_pillow:        the batchnorm layer mentioned, created in runtime
       trainable:        DO NOT confuse with nn.Module.training (module state)
     """
-    def __init__(self, module, with_bn_pillow=True):
+    def __init__(self,
+                 module,
+                 bn_pillow_planes=None,
+                 bn_pillow_type='2d'):
         super().__init__()
         self.add_module('module', module)
-        self.with_bn_pillow = with_bn_pillow
         self.trainable = True
+        if bn_pillow_planes is not None:
+            self.with_bn_pillow = True
+            bn_pillow = BatchNormPillow(bn_pillow_planes, bn_pillow_type)
+            self.add_module('bn_pillow', bn_pillow)
+        else:
+            self.with_bn_pillow = False
 
     def forward(self, x, *args, **kwargs):
         y = self.module.forward(x, *args, **kwargs)
         if self.with_bn_pillow:
             if not hasattr(self, 'bn_pillow'):
-                bn_pillow = BatchNormPillow(y.shape)
+                pillow_type = '2d' if len(y.shape) == 4 else '1d'
+                bn_pillow = BatchNormPillow(y.shape[1], pillow_type)
                 device = next(self.module.parameters()).device
                 bn_pillow = bn_pillow.to(device)
                 self.add_module('bn_pillow', bn_pillow)

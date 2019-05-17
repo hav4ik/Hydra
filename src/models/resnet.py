@@ -54,26 +54,31 @@ class PreActResNet18(Hydra):
         layers = [nn.Conv2d(
             1, self.in_planes, kernel_size=3,
             stride=1, padding=1, bias=False)]
+        bn_planes = [self.in_planes]
 
         layers.extend(self._make_layer(num_planes[0], num_blocks[0], 1))
         layers.extend(self._make_layer(num_planes[1], num_blocks[1], 2))
         layers.extend(self._make_layer(num_planes[2], num_blocks[2], 2))
         layers.extend(self._make_layer(num_planes[3], num_blocks[3], 2))
 
+        bn_planes.extend([num_planes[0]] * num_blocks[0])
+        bn_planes.extend([num_planes[1]] * num_blocks[1])
+        bn_planes.extend([num_planes[2]] * num_blocks[2])
+        bn_planes.extend([num_planes[3]] * num_blocks[3])
+
         controller = self.add_block(
-            Block(layers[0], with_bn_pillow=True))
-        for layer in layers[1:]:
+            Block(layers[0], bn_pillow_planes=bn_planes[0]))
+        for layer, nplanes in zip(layers[1:], bn_planes[1:]):
             new_controller = self.add_block(
-                Block(layer, with_bn_pillow=True)).stack_on(controller)
+                Block(layer, bn_pillow_planes=nplanes)).stack_on(controller)
             controller = new_controller
 
         def define_head(n_classes):
-            m = nn.Sequential(*[
+            return Block(nn.Sequential(*[
                     nn.AdaptiveAvgPool2d((1, 1)),
                     Flatten(),
                     nn.Linear(self.in_planes, n_classes),
-                    nn.LogSoftmax(dim=1)])
-            return Block(m, with_bn_pillow=False)
+                    nn.LogSoftmax(dim=1)]))
 
         for head in heads:
             module = define_head(head['n_classes'])
