@@ -53,7 +53,7 @@ def stress_points(hydra, losses, metrics, loaders, device):
       device:    device to do training on
 
     Returns:
-      inner_stress: a dict {branch_index: tensor} of branches stress values
+      inner_stress: a dict {branch_index: value} of branches stress values
       outer_stress: a dict of lists of tuples of outer measurements info:
                     {branch_index: [(task_id_i, task_id_j, stress_value)]}
     """
@@ -120,6 +120,8 @@ def stress_points(hydra, losses, metrics, loaders, device):
         for idx in range(innerstress_request_len):
             rep_id_i = measure_requests[idx][2]
             inner_stress[rep_id_i] += stress_measures[idx]
+    for k in inner_stress.keys():
+        inner_stress[k] = inner_stress[k].item()
 
     # Gathering the stresses between each subnetworks
     for k, v in outer_stress.items():

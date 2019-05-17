@@ -8,6 +8,7 @@ from utils import metrics as custom_metrics
 import datasets
 import models
 from applications import trainers
+from applications.unzipping import unzip
 
 
 def import_data_loaders(config, n_workers, verbose=1):
@@ -94,8 +95,10 @@ def run(config,
                           **cfg['trainer']['kwargs'])
 
     starting_epoch = model_manager.last_epoch + 1
+    last_epoch = starting_epoch
     for epoch in range(starting_epoch, starting_epoch + epochs):
         eval_losses, eval_metrics = trainer.run_epoch(epoch)
+        last_epoch += 1
 
         if 'saving_freq' in cfg:
             if (epoch + 1) % cfg['saving_freq'] == 0:
@@ -104,6 +107,14 @@ def run(config,
         if trainer.early_stop():
             log_utils.print_early_stopping()
             break
+
+    unzip(hydra=model,
+          losses=losses,
+          metrics=metrics,
+          loaders=train_loaders,
+          device=device,
+          from_epoch=last_epoch)
+
     tensorboard_writer.close()
 
 
