@@ -1,5 +1,5 @@
 # Experiment name and output dir
-experiment: naive
+experiment: averaging
 out_dir: ~/data/out
 saving_freq: 10
 
@@ -83,11 +83,16 @@ metrics:
 
 # Trainer
 trainer:
-  name: Naive
+  name: Averaging
   kwargs:
     optimizers:
       method: SGD
       kwargs:
-        lr: 0.005
+        lr: 0.001
         momentum: 0.9
         nesterov: true
+    loss_weights:
+      mnist: 1.0
+      fashion: 1.0
+      kmnist: 1.0
+    slimming: 0.001

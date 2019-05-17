@@ -1,5 +1,5 @@
 # Experiment name and output dir
-experiment: mgda
+experiment: naive
 out_dir: ~/data/out
 saving_freq: 10
 
@@ -83,11 +83,11 @@ metrics:
 
 # Trainer
 trainer:
-  name: MGDA
+  name: Naive
   kwargs:
     optimizers:
       method: SGD
       kwargs:
-        lr: 0.005
+        lr: 0.001
         momentum: 0.9
         nesterov: true
