@@ -125,7 +125,7 @@ def stress_points(hydra, losses, metrics, loaders, device):
     for k, v in outer_stress.items():
         for i in range(len(v)):
             task_id_i, task_id_j, idx = v[i]
-            v[i] = (task_id_i, task_id_j, stress_measures[idx])
+            v[i] = (task_id_i, task_id_j, stress_measures[idx].item())
 
     del peeled_hydras
     return inner_stress, outer_stress

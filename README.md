@@ -24,7 +24,7 @@ A comprehensive survey on these algorithms (and more) can be found in [this blog
 * It is recommended to use [anaconda][conda] for installation of core packages (since `conda` packages comes with low-level libraries that can optimize the runtime):
 
       conda install pytorch torchvision cudatoolkit=10.0 -c pytorch
-      conda install numpy pandas
+      conda install numpy pandas scikit-learn
 
 * Some of the packages are not available from anaconda, so you can install them using `pip`:
 
