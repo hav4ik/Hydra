@@ -18,6 +18,7 @@ class Controller:
       parent_index:      index (in Hydra.blocks) of the parent block
       children_indices:  indices (in Hydra.blocks) of the childrens
       task_id:           if this block is a head, stores the task_id
+      serving_tasks:     a dict {task_id: idk_what_this_is}
     """
     def __init__(self, index=None):
         self.index = index
@@ -405,6 +406,36 @@ class Hydra(nn.Module):
             new_controllers.append(tmp_ctrl)
             new_blocks.append(tmp_block)
         return new_controllers, new_blocks
+
+    def rip(self, device):
+        """
+        Violently rips the model apart. Below are some example results:
+
+        | B |  (x) (y) (z)         | A |  (x) (y) (z)
+        | E |   |   |   |          | F |   |   |   |
+        | F |   +--(a) (b)         | T |  (a) (e) (b)
+        | O |       |   |          | E |   |   |   |
+        | R |       +--(c)         | R |   +--(c) (d)
+        | E |           |          |   |       |   |
+        |   |          (*)         |   |       +--(*)
+
+        Args:
+          device: a device to spawn the new branches on, either CPU or GPU
+
+        Returns:
+          a dict of lists of tuples {index: [(new_index, children_index)]}
+        """
+        indices = list(self.branching_points)
+        indices.sort(key=lambda i: len(self.controllers[i].execution_chain))
+
+        index_map = dict()
+        for index in indices:
+            children_indices = self.controllers[index].children_indices
+            branching_scheme = [[i] for i in children_indices]
+            new_cs, _ = self.split(index, branching_scheme, device)
+            index_map[index] = [
+                    (c.index, i) for c, i in zip(new_cs, children_indices)]
+        return index_map
 
     def peel(self, task_ids, device=None):
         """
