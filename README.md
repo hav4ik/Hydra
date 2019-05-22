@@ -38,9 +38,7 @@ A comprehensive survey on these algorithms (and more) can be found in [this blog
 
 # Coming soon...
 
-* Neural Architecture Search for Multi-Task Learning.
 * Proper framework documentation and examples.
-* Built-in distillation from a bunch of single-task networks.
 
 
 [hydra]: https://github.com/hav4ik/Hydra
