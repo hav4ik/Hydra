@@ -113,7 +113,7 @@ class BaseTrainer:
         """
         log_utils.print_on_epoch_begin(epoch, self.counter)
 
-        train_losses, train_metrics = self.train_epoch()
+        train_losses, train_metrics = self.train_epoch(epoch)
         if self.test_loaders is not None:
             eval_losses, eval_metrics = self.eval_epoch()
 
@@ -124,16 +124,16 @@ class BaseTrainer:
         if self.tensorboard_writer is not None:
             for task_id in self.task_ids:
                 self.tensorboard_writer.add_scalar(
-                        '{}/train/loss'.format(task_id),
+                        'main/{}/train/loss'.format(task_id),
                         train_losses[task_id], epoch)
                 self.tensorboard_writer.add_scalar(
-                        '{}/train/metric'.format(task_id),
+                        'main/{}/train/metric'.format(task_id),
                         train_metrics[task_id], epoch)
                 self.tensorboard_writer.add_scalar(
-                        '{}/val/loss'.format(task_id),
+                        'main/{}/val/loss'.format(task_id),
                         eval_losses[task_id], epoch)
                 self.tensorboard_writer.add_scalar(
-                        '{}/val/metric'.format(task_id),
+                        'main/{}/val/metric'.format(task_id),
                         eval_metrics[task_id], epoch)
 
         if self.patience is not None:

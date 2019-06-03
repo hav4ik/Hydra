@@ -52,7 +52,7 @@ class Averaging(BaseTrainer):
                 (k, torch.tensor(v, device=device))
                 for k, v in loss_weights.items())
 
-    def train_epoch(self):
+    def train_epoch(self, epoch=None):
         """Trains the model on all data loaders for an epoch.
         """
         self.model.train()

@@ -52,7 +52,7 @@ class MGDA(BaseTrainer):
         self.mode = mode
         self.normalize = normalize
 
-    def train_epoch(self):
+    def train_epoch(self, epoch=None):
         """Trains the model on all data loaders for an epoch.
         """
         self.model.train()
@@ -132,12 +132,16 @@ class MGDA(BaseTrainer):
                         else:
                             grad_star = self.temp_grad[idx][i]
 
-                        if torch.max(torch.abs(grad_star)) < 1e-5:
+                        if torch.max(torch.abs(grad_star)) < 1e-4:
                             pareto_count += 1
                         p.grad.copy_(grad_star.view(p.grad.shape))
 
             self.optimizer.step()
             pbar.update()
+
+        if self.tensorboard_writer is not None:
+            self.tensorboard_writer.add_scalar(
+                    'misc/pareto_count', pareto_count, epoch)
 
         with torch.no_grad():
             for task_id in self.task_ids:
